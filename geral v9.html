@@ -166,6 +166,11 @@
   .big-card:hover{
     transform:translateY(-2px);
   }
+
+  /* NOVO ESTILO: Card de métricas de colaboradores (Cashback) */
+  .big-card.collab-metric {
+    background: linear-gradient(135deg, #f97316, #fb923c); /* Gradiente Laranja */
+  }
   
   .big-card small{
     opacity:0.9;
@@ -563,6 +568,10 @@ function showDebug() {
   html += '<strong>CONTAGEM APP:</strong><br>' + JSON.stringify(lastDataContagemApp, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;');
   html += '<br><br><strong>VENDAS:</strong><br>' + JSON.stringify(lastDataVendas, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;');
   html += '<br><br><strong>REFUTURIZA:</strong><br>' + JSON.stringify(lastDataRefuturiza, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;');
+  // Adicionando outros dados de debug
+  html += '<br><br><strong>RETENÇÃO:</strong><br>' + JSON.stringify(lastDataRetencao, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;');
+  html += '<br><br><strong>ADIMPLÊNCIA:</strong><br>' + JSON.stringify(lastDataAdimplencia, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;');
+  html += '<br><br><strong>CASHBACK:</strong><br>' + JSON.stringify(lastDataCashback, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;');
   panel.innerHTML = html;
 }
 
@@ -570,6 +579,17 @@ function safeNum(v) {
   if(v === null || v === undefined || v === '') return 0;
   const n = Number(v);
   return isNaN(n) ? 0 : n;
+}
+
+// Formata números como moeda brasileira (R$ 1.234,56)
+function formatCurrency(value) {
+  const num = safeNum(value);
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(num);
 }
 
 function pct(ok, total) {
@@ -926,15 +946,15 @@ function renderAdimplencia() {
     const qia = safeNum(c.qia);
     const trocas = safeNum(c.totalTrocas);
     
-    return `<div class="card"><h3>${c.nome}</h3><div class="kv"><span>Arrecadado:</span><strong>R$ ${arrecadado.toFixed(2)}</strong></div><div class="kv"><span>QIA:</span><strong>${qia}</strong></div><div class="kv"><span>TK:</span><strong>R$ ${tk}</strong></div><div class="kv"><span>Trocas:</span><strong>${trocas}</strong></div></div>`;
+    return `<div class="card"><h3>${c.nome}</h3><div class="kv"><span>Arrecadado:</span><strong>${formatCurrency(arrecadado)}</strong></div><div class="kv"><span>QIA:</span><strong>${qia}</strong></div><div class="kv"><span>TK:</span><strong>${formatCurrency(tk)}</strong></div><div class="kv"><span>Trocas:</span><strong>${trocas}</strong></div></div>`;
   }
   
   const topCards = document.getElementById('topCardsAdimplencia');
   if(topCards) {
     topCards.innerHTML = 
       renderBigCardAdimplencia('TOTAL MC', safeNum(geral.totalMC), 'Total de movimentações') +
-      renderBigCardAdimplencia('TOTAL ARRECADADO', 'R$ ' + safeNum(geral.totalArrecadado).toFixed(2), 'Valor total arrecadado') +
-      renderBigCardAdimplencia('TKM', 'R$ ' + safeNum(geral.tkm), 'Ticket médio') +
+      renderBigCardAdimplencia('TOTAL ARRECADADO', formatCurrency(geral.totalArrecadado), 'Valor total arrecadado') +
+      renderBigCardAdimplencia('TKM', formatCurrency(geral.tkm), 'Ticket médio') +
       renderBigCardAdimplencia('TOTAL TROCAS', safeNum(geral.totalTrocas), 'Trocas realizadas') +
       renderFaixaCard('NOVOS REJEITADOS (NR)', safeNum(geral.totalNIR), safeNum(geral.percentNIR)) +
       renderFaixaCard('1 a 3 meses', safeNum(geral.total1a3), safeNum(geral.percent1a3)) +
@@ -974,55 +994,85 @@ function renderCashback() {
   const parceiros = data.parceiros || [];
   const colaboradores = data.colaboradores || [];
   const colabMetricas = data.colaboradoresMetricas || {};
+
+  // Funções helper atualizadas
+  function renderBigCard(title, value, subtitle, customClass = '', barHtml = '') {
+    const cls = customClass ? `big-card ${customClass}` : 'big-card';
+    return `<div class="${cls}"><small>${title}</small><h2>${value}</h2><div>${subtitle}</div>${barHtml}</div>`;
+  }
   
-  function renderBigCard(title, value, subtitle) {
-    return `<div class="big-card"><small>${title}</small><h2>${value}</h2><div>${subtitle}</div></div>`;
+  function getCorCashback(valor) {
+    const v = safeNum(valor);
+    if(v === 0) return '#ef4444'; // Vermelho (R$ 0,00)
+    if(v > 0 && v < 3) return '#eab308'; // Âmbar (Entre R$ 0,01 e R$ 2,99)
+    return '#22c55e'; // Verde (R$ 3,00 ou mais)
   }
   
   function renderParceiro(p) {
     if(p.nome === 'PARCEIROS') return '';
     const valor = safeNum(p.valorCashback);
-    return `<div class="cashback-card"><h3>${p.nome}</h3><div class="kv"><span>Segmento:</span><strong>${p.segmento || '-'}</strong></div><div class="kv"><span>Cashback:</span><strong>R$ ${valor.toFixed(2)}</strong></div><div class="kv"><span>Tendência:</span><strong>R$ ${safeNum(p.tendencia).toFixed(2)}</strong></div></div>`;
-  }
-  
-  function getCorCashback(valor) {
-    const v = safeNum(valor);
-    if(v === 0) return '#ef4444';
-    if(v >= 1 && v < 3) return '#eab308';
-    return '#22c55e';
+    return `<div class="cashback-card"><h3>${p.nome}</h3><div class="kv"><span>Segmento:</span><strong>${p.segmento || '-'}</strong></div><div class="kv"><span>Cashback:</span><strong>${formatCurrency(valor)}</strong></div><div class="kv"><span>Tendência:</span><strong>${formatCurrency(safeNum(p.tendencia))}</strong></div></div>`;
   }
   
   function renderColaborador(c) {
-    const cor = getCorCashback(c.cashbackMes);
+    const valorBruto = safeNum(c.cashbackMes);
+    const cor = getCorCashback(valorBruto);
     const almocoStatus = c.ganhouAlmoco ? '✓ Ganhou' : '-';
-    return `<div class="cashback-card" style="border-left: 4px solid ${cor}"><h3>${c.nome}</h3><div class="kv"><span>Cashback:</span><strong style="color:${cor}">${c.cashbackTexto}</strong></div><div class="kv"><span>Almoço:</span><strong>${almocoStatus}</strong></div></div>`;
+    
+    let cashbackTexto;
+    if (valorBruto > 0 && valorBruto < 3) {
+        cashbackTexto = '> R$0,00 e < R$3,00';
+    } else {
+        cashbackTexto = formatCurrency(valorBruto);
+    }
+    
+    return `<div class="cashback-card" style="border-left: 4px solid ${cor}"><h3>${c.nome}</h3><div class="kv"><span>Cashback:</span><strong style="color:${cor}">${cashbackTexto}</strong></div><div class="kv"><span>Almoço:</span><strong>${almocoStatus}</strong></div></div>`;
   }
-  
+
+  // --- TOP CARDS (Bloco 1) ---
   const topCards = document.getElementById('topCardsCashback');
   if(topCards) {
+    // Apenas o TOTAL CASHBACK (os outros 3 foram removidos)
     topCards.innerHTML = 
-      renderBigCard('TOTAL DE DIAS', safeNum(geral.totalDias), 'Dias do período') +
-      renderBigCard('REALIZADOS', safeNum(geral.realizados), 'Dias realizados') +
-      renderBigCard('DIAS RESTANTES', safeNum(geral.diasRestantes), 'Dias restantes') +
-      renderBigCard('TOTAL CASHBACK', 'R$ ' + safeNum(geral.totalCashback).toFixed(2), 'Valor total gerado');
+      renderBigCard('TOTAL CASHBACK', formatCurrency(geral.totalCashback), 'Valor total gerado');
   }
-  
+
+  // --- SECTIONS (Bloco 2 e Colaboradores) ---
   const sections = document.getElementById('sectionsCashback');
   if(sections) {
     const parceirosValidos = parceiros.filter(p => p.nome !== 'PARCEIROS');
     const qtdParceiros = parceirosValidos.length;
     const qtdParceirosAcima20 = parceirosValidos.filter(p => safeNum(p.valorCashback) >= 20).length;
-    const percentAcima20 = qtdParceiros > 0 ? ((qtdParceirosAcima20 / qtdParceiros) * 100).toFixed(2) : 0;
+    
+    // Cálculo do % >= R$ 20 (para card mesclado)
+    const percentAcima20 = qtdParceiros > 0 ? ((qtdParceirosAcima20 / qtdParceiros) * 100) : 0;
+    const mergedBarHtml = `<div class="progress-wrap" style="margin-top:10px"><div class="progress"><div class="bar green" style="width:${Math.max(percentAcima20, 5)}%">${percentAcima20.toFixed(2)}%</div></div></div>`;
+
+    // Cálculo do novo card ENTRE > R$0,00 e < R$3,00
+    const totalColab = safeNum(colabMetricas.totalColaboradores);
+    const totalAcima3 = safeNum(colabMetricas.totalAcima3);
+    const totalZerados = safeNum(colabMetricas.totalZerados);
+    const totalEntre0e3 = Math.max(0, totalColab - totalAcima3 - totalZerados); // Garante que não é negativo
+    const percentEntre0e3 = totalColab > 0 ? ((totalEntre0e3 / totalColab) * 100) : 0;
+
+    const collabClass = 'collab-metric'; // Classe para cor laranja
     
     let html = '<div class="top-cards">';
-    html += renderBigCard('QTD. PARCEIROS', qtdParceiros, 'Total de parceiros') +
-            renderBigCard('QTD. >= R$ 20', qtdParceirosAcima20, 'Parceiros com valor >= R$ 20') +
-            renderBigCard('% >= R$ 20', percentAcima20 + '%', 'Percentual de parceiros >= R$ 20') +
-            renderBigCard('META DIÁRIA', 'R$ ' + safeNum(metricas.metaDiariaCashback).toFixed(2), 'Meta diária') +
-            renderBigCard('TENDÊNCIA', 'R$ ' + safeNum(metricas.tendenciaRealizado).toFixed(2), 'Tendência realizado') +
-            renderBigCard('TOTAL COLAB.', safeNum(colabMetricas.totalColaboradores), 'Total de colaboradores') +
-            renderBigCard('ACIMA DE R$ 3', safeNum(colabMetricas.totalAcima3), safeNum(colabMetricas.percentAcima3) + '%') +
-            renderBigCard('ZERADOS', safeNum(colabMetricas.totalZerados), safeNum(colabMetricas.percentZerados) + '%');
+
+    // Cards Gerais
+    html += renderBigCard('QTD. PARCEIROS', qtdParceiros, 'Total de parceiros');
+    // Card QTD. >= R$ 20 (Mesclado com %)
+    html += renderBigCard('QTD. >= R$ 20', qtdParceirosAcima20, 'Parceiros com valor >= R$ 20', '', mergedBarHtml);
+    html += renderBigCard('META DIÁRIA', formatCurrency(metricas.metaDiariaCashback), 'Meta diária');
+    html += renderBigCard('TENDÊNCIA', formatCurrency(metricas.tendenciaRealizado), 'Tendência realizado');
+    
+    // Cards Colaboradores (Cor Laranja)
+    html += renderBigCard('TOTAL COLAB.', safeNum(colabMetricas.totalColaboradores), 'Total de colaboradores', collabClass);
+    html += renderBigCard('ACIMA DE R$ 3', safeNum(colabMetricas.totalAcima3), safeNum(colabMetricas.percentAcima3) + '%', collabClass);
+    // Novo Card
+    html += renderBigCard('ENTRE > R$0,00 e < R$3,00', totalEntre0e3, percentEntre0e3.toFixed(2) + '%', collabClass);
+    html += renderBigCard('ZERADOS', safeNum(colabMetricas.totalZerados), safeNum(colabMetricas.percentZerados) + '%', collabClass);
+
     html += '</div>';
     
     if(parceirosValidos.length > 0) {
@@ -1060,19 +1110,20 @@ function renderDashboard() {
     html += `<div class="dashboard-section"><h3>🔄 Refuturiza</h3><div class="card"><div class="kv"><span>Total:</span><strong>${safeNum(ref.totalRefuturiza)}</strong></div><div class="kv"><span>Com Ligação:</span><strong>${safeNum(ref.comLigacao)}</strong></div></div></div>`;
   }
   
+  // Alteração solicitada: Churn Rate por Churn Franquia
   if(lastDataRetencao?.data?.geral) {
     const ret = lastDataRetencao.data.geral;
-    html += `<div class="dashboard-section"><h3>🔐 Retenção</h3><div class="card"><div class="kv"><span>Churn Rate:</span><strong>${safeNum(ret.churnRate).toFixed(2)}%</strong></div><div class="kv"><span>Retidos:</span><strong>${safeNum(ret.totalRetidosMes)}</strong></div></div></div>`;
+    html += `<div class="dashboard-section"><h3>🔐 Retenção</h3><div class="card"><div class="kv"><span>Churn Franquia:</span><strong>${safeNum(ret.churnFranquia).toFixed(2)}%</strong></div><div class="kv"><span>Retidos:</span><strong>${safeNum(ret.totalRetidosMes)}</strong></div></div></div>`;
   }
   
   if(lastDataAdimplencia?.data?.geral) {
     const adim = lastDataAdimplencia.data.geral;
-    html += `<div class="dashboard-section"><h3>✅ Adimplência</h3><div class="card"><div class="kv"><span>Arrecadado:</span><strong>R$ ${safeNum(adim.totalArrecadado).toFixed(2)}</strong></div><div class="kv"><span>TKM:</span><strong>R$ ${safeNum(adim.tkm)}</strong></div></div></div>`;
+    html += `<div class="dashboard-section"><h3>✅ Adimplência</h3><div class="card"><div class="kv"><span>Arrecadado:</span><strong>${formatCurrency(adim.totalArrecadado)}</strong></div><div class="kv"><span>TKM:</span><strong>${formatCurrency(adim.tkm)}</strong></div></div></div>`;
   }
   
   if(lastDataCashback?.data?.geral) {
     const cash = lastDataCashback.data.geral;
-    html += `<div class="dashboard-section"><h3>🎁 Cashback</h3><div class="card"><div class="kv"><span>Total:</span><strong>R$ ${safeNum(cash.totalCashback).toFixed(2)}</strong></div><div class="kv"><span>Dias Restantes:</span><strong>${safeNum(cash.diasRestantes)}</strong></div></div></div>`;
+    html += `<div class="dashboard-section"><h3>🎁 Cashback</h3><div class="card"><div class="kv"><span>Total:</span><strong>${formatCurrency(cash.totalCashback)}</strong></div><div class="kv"><span>Dias Restantes:</span><strong>${safeNum(cash.diasRestantes)}</strong></div></div></div>`;
   }
   
   html += '</div>';
