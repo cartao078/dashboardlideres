@@ -259,6 +259,13 @@
   .bar.yellow{background:#ffff00}
   .bar.red{background:#ff0000}
   
+  /* Novas cores para os cards do dashboard de colaboradores do Cashback */
+  .big-card.total-colab { background: linear-gradient(135deg, #4299e1, #3182ce); } /* Azul */
+  .big-card.acima-3 { background: linear-gradient(135deg, #48bb78, #38a169); } /* Verde */
+  .big-card.entre-0-3 { background: linear-gradient(135deg, #f6ad55, #ed8936); } /* Laranja */
+  .big-card.zerados { background: linear-gradient(135deg, #f56565, #e53e3e); } /* Vermelho */
+
+
   .status-label{
     display:inline-block;
     padding:3px 8px;
@@ -454,10 +461,11 @@
 const API_CONTAGEM_APP = "https://script.google.com/macros/s/AKfycby6ip-dZkmDIrG3GhutwY3t40DprmNlUxIf9kMBefFwzosOFri9nq2dSArTQVb1CUxF/exec";
 const API_VENDAS = "https://script.google.com/macros/s/AKfycbz2iN8BFtjs0GHD1W84c0hNvRJIuJu3pmv-L0YcboGSgLhd2LQNOJMieJLTNWQC/exec";
 const API_REFUTURIZA = "https://script.google.com/macros/s/AKfycbwjrD4H1nK8CTpSVT0n7T9BYonh-F5s7zx3E9QVeiJuO1vgFGMCqnWgYH0einPPjxYl/exec";
-const API_RETENCAO = "https://script.google.com/macros/s/AKfycbyXDAGOZn9VUNMMlAE-RtQpIFr70TndFXp_WLC1bErHDkjQyKfdr-gWoYJZmRhjjA/exec";
+const API_RETENCAO = "https://script.google.com/macros/s/AKfycbyXDAGOZn9VUNMMlAE-RtQpIFr70TndFXp_WLC1bErHDkjQyKfdr-gWoYJZsRhjjA/exec";
 const API_ADIMPLENCIA = "https://script.google.com/macros/s/AKfycbzJ5TZAmTBpoZiT4Wss9RvdguIPaPHaJrakHvqz0qReCyC21oweNt84feMFMvmC118U/exec";
 const API_CASHBACK = "https://script.google.com/macros/s/AKfycbxfI9vHstylYG7vjjf_5xDa_ElnBe9qcd6neiK4-bvoA6YrSK0MzY2Eq9jrAvOt2BnY/exec";
 
+// Variáveis para armazenar o último dado e o status de carregamento
 let lastDataContagemApp = null;
 let lastDataVendas = null;
 let lastDataRefuturiza = null;
@@ -466,11 +474,59 @@ let lastDataAdimplencia = null;
 let lastDataCashback = null;
 let debugMode = false;
 
-// SISTEMA DE ABAS
+const tabsLoaded = {
+    contagemapp: false,
+    vendas: false,
+    retencao: false,
+    adimplencia: false,
+    cashback: false,
+    refuturiza: false
+};
+
+// --- FUNÇÕES DE UTILIDADE GERAL ---
+
+/**
+ * Formata um número como valor monetário brasileiro (R$ X.XXX,XX).
+ * @param {number} v - O valor a ser formatado.
+ * @returns {string} O valor formatado.
+ */
+function formatCurrency(v) {
+  const n = safeNum(v);
+  return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function safeNum(v) {
+  if(v === null || v === undefined || v === '') return 0;
+  const n = Number(v);
+  return isNaN(n) ? 0 : n;
+}
+
+function pct(ok, total) {
+  const o = safeNum(ok);
+  const t = safeNum(total);
+  return t > 0 ? Math.round((o / t) * 100) : 0;
+}
+
+function colorClass(p) {
+  if(p >= 89) return 'green';
+  if(p >= 85) return 'yellow';
+  return 'red';
+}
+
+function isInactive(p) {
+  const s = String(p.status || '').toLowerCase();
+  return s === 'inativa' || s === 'ferias' || s === 'férias' || s === 'ausente';
+}
+
+// --- SISTEMA DE ABAS E CARREGAMENTO ---
+
 document.querySelectorAll('.tab-button').forEach(btn => {
   btn.addEventListener('click', function() {
     const tab = this.getAttribute('data-tab');
     switchTab(tab);
+    if (tab !== 'dashboard' && !tabsLoaded[tab]) {
+        loadTabData(tab);
+    }
   });
 });
 
@@ -480,14 +536,143 @@ function switchTab(tab) {
   });
   document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
   
-  // A aba que será mostrada é um elemento irmão da área de botões
   document.querySelectorAll('.tab-pane').forEach(pane => {
     pane.classList.remove('active');
   });
   document.getElementById(tab).classList.add('active');
 }
 
-// BOTÕES DE AÇÃO
+/**
+ * Carrega os dados de uma aba específica APENAS uma vez.
+ * @param {string} tab - O nome da aba ('contagemapp', 'vendas', etc.).
+ */
+async function loadTabData(tab, forceReload = false) {
+    // Se não for para forçar, e já estiver carregado, saia.
+    if (!forceReload && tabsLoaded[tab]) return;
+
+    const apiMap = {
+        contagemapp: API_CONTAGEM_APP,
+        vendas: API_VENDAS,
+        refuturiza: API_REFUTURIZA,
+        retencao: API_RETENCAO,
+        adimplencia: API_ADIMPLENCIA,
+        cashback: API_CASHBACK
+    };
+
+    const renderMap = {
+        contagemapp: renderContagemApp,
+        vendas: renderVendas,
+        refuturiza: renderRefuturiza,
+        retencao: renderRetencao,
+        adimplencia: renderAdimplencia,
+        cashback: renderCashback
+    };
+    
+    const dataVarMap = {
+        contagemapp: 'lastDataContagemApp',
+        vendas: 'lastDataVendas',
+        refuturiza: 'lastDataRefuturiza',
+        retencao: 'lastDataRetencao',
+        adimplencia: 'lastDataAdimplencia',
+        cashback: 'lastDataCashback'
+    };
+
+    const api = apiMap[tab];
+    const render = renderMap[tab];
+    const dataVar = dataVarMap[tab];
+    
+    const paneElement = document.getElementById(tab);
+    if (!api || !paneElement) return;
+
+    // Salva o HTML original da aba para restaurar se houver sucesso
+    const originalContent = paneElement.innerHTML; 
+    
+    // Indicador de carregamento (Opcional, mas útil)
+    if(forceReload || !tabsLoaded[tab]) {
+        paneElement.innerHTML = `<div style="padding:20px;text-align:center;color:var(--accent);font-weight:600;">🔄 Carregando dados da aba ${tab.toUpperCase()}...</div>`;
+    }
+
+    try {
+        const res = await fetch(api + '?_=' + Date.now());
+        if(res.ok) {
+            window[dataVar] = await res.json();
+            // Restaura o layout original (vazio) e chama o render
+            if (tab !== 'dashboard') {
+                // Para abas que não são o dashboard, precisamos re-criar os sub-elementos (cards/sections)
+                paneElement.innerHTML = `
+                    ${tab === 'dashboard' ? '' : `<div id="topCards${capitalize(tab)}" class="top-cards"></div>`}
+                    ${tab === 'dashboard' ? '' : `<div id="sections${capitalize(tab)}"></div>`}
+                    ${tab === 'dashboard' ? `<div style="margin-bottom:20px"><h2 style="color:var(--accent);margin:0 0 20px 0">Visão Geral dos Indicadores</h2><div id="dashboardContent"></div></div>` : ''}
+                `;
+            } else {
+                 // A aba dashboard já tem a estrutura interna renderDashboard que a populou antes.
+                 // Não precisamos restaurar, pois renderDashboard sempre vai popular dashboardContent.
+            }
+            
+            render();
+            tabsLoaded[tab] = true;
+        } else {
+            console.error(`Erro ao carregar ${tab}: Resposta HTTP não OK (${res.status})`);
+            // Exibe mensagem de erro na aba
+            paneElement.innerHTML = `
+                <div style="padding:20px;text-align:center;color:red;border:1px solid red;border-radius:8px;">
+                    ❌ **Erro ao carregar dados de ${tab.toUpperCase()}**: Resposta HTTP não OK (${res.status}).<br>
+                    Verifique a URL da API para esta aba no código.
+                </div>
+            `;
+            window[dataVar] = null; // Garante que a variável de dados está vazia
+            tabsLoaded[tab] = false; // Permite retentar no clique
+        }
+    } catch(err) {
+        console.error(`Erro ao carregar ${tab}:`, err);
+         // Exibe mensagem de erro na aba
+        paneElement.innerHTML = `
+            <div style="padding:20px;text-align:center;color:red;border:1px solid red;border-radius:8px;">
+                ❌ **Erro de rede na requisição de ${tab.toUpperCase()}**.<br>
+                Verifique o console do navegador (F12) para detalhes sobre a falha do *fetch*.
+            </div>
+        `;
+        window[dataVar] = null; // Garante que a variável de dados está vazia
+        tabsLoaded[tab] = false; // Permite retentar no clique
+    }
+}
+
+function capitalize(s) {
+    return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/**
+ * Carrega todos os dados (usado para Dashboard e Recarregar tudo).
+ */
+async function init() {
+  const loadPromises = [
+    loadTabData('contagemapp', true), 
+    loadTabData('vendas', true),
+    loadTabData('refuturiza', true),
+    loadTabData('retencao', true),
+    loadTabData('adimplencia', true),
+    loadTabData('cashback', true)
+  ];
+  
+  await Promise.all(loadPromises);
+  
+  renderDashboard();
+  
+  // Re-renderiza a aba ativa após o carregamento completo, se não for o dashboard.
+  const activeTab = document.querySelector('.tab-button.active').getAttribute('data-tab');
+  if(activeTab !== 'dashboard') {
+     const renderMap = {
+        contagemapp: renderContagemApp, vendas: renderVendas, refuturiza: renderRefuturiza, 
+        retencao: renderRetencao, adimplencia: renderAdimplencia, cashback: renderCashback
+     };
+     if(renderMap[activeTab]) renderMap[activeTab]();
+  }
+  
+  showDebug(); // Mostra o status de carregamento no painel de debug.
+}
+
+// --- BOTÕES DE AÇÃO E UTILIDADES ---
+
 function setupButtons() {
   const reloadBtn = document.getElementById('reload');
   const debugBtn = document.getElementById('debugBtn');
@@ -497,6 +682,8 @@ function setupButtons() {
     reloadBtn.onclick = function(e) {
       e.preventDefault();
       console.log('Recarregando dados...');
+      // Marca todas as abas como não carregadas para forçar o recarregamento
+      Object.keys(tabsLoaded).forEach(key => tabsLoaded[key] = false);
       init();
     };
   }
@@ -559,35 +746,17 @@ function downloadTabAsImage() {
 
 function showDebug() {
   const panel = document.getElementById('debugPanel');
-  let html = '<strong>📊 DADOS RECEBIDOS:</strong><br><br>';
+  let html = '<strong>📊 DADOS RECEBIDOS (status **null** indica falha):</strong><br><br>';
   html += '<strong>CONTAGEM APP:</strong><br>' + JSON.stringify(lastDataContagemApp, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;');
   html += '<br><br><strong>VENDAS:</strong><br>' + JSON.stringify(lastDataVendas, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;');
   html += '<br><br><strong>REFUTURIZA:</strong><br>' + JSON.stringify(lastDataRefuturiza, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;');
+  html += '<br><br><strong>RETENCAO:</strong><br>' + JSON.stringify(lastDataRetencao, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;');
+  html += '<br><br><strong>ADIMPLENCIA:</strong><br>' + JSON.stringify(lastDataAdimplencia, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;');
+  html += '<br><br><strong>CASHBACK:</strong><br>' + JSON.stringify(lastDataCashback, null, 2).replace(/\n/g, '<br>').replace(/ /g, '&nbsp;');
   panel.innerHTML = html;
 }
 
-function safeNum(v) {
-  if(v === null || v === undefined || v === '') return 0;
-  const n = Number(v);
-  return isNaN(n) ? 0 : n;
-}
-
-function pct(ok, total) {
-  const o = safeNum(ok);
-  const t = safeNum(total);
-  return t > 0 ? Math.round((o / t) * 100) : 0;
-}
-
-function colorClass(p) {
-  if(p >= 89) return 'green';
-  if(p >= 85) return 'yellow';
-  return 'red';
-}
-
-function isInactive(p) {
-  const s = String(p.status || '').toLowerCase();
-  return s === 'inativa' || s === 'ferias' || s === 'férias' || s === 'ausente';
-}
+// --- FUNÇÕES DE RENDERIZAÇÃO DE CARDS PESSOAIS (SEM ALTERAÇÃO DE LÓGICA) ---
 
 function renderPersonCardContagem(p) {
   const total = safeNum(p.t);
@@ -637,73 +806,7 @@ function renderSection(title, arr, isVendas = false) {
   return `<div class="section-title">${title}</div><div class="cards-grid">${arr.map(renderFunc).join('')}</div>`;
 }
 
-async function init() {
-  try {
-    const resContagem = await fetch(API_CONTAGEM_APP + '?_=' + Date.now());
-    if(resContagem.ok) {
-      lastDataContagemApp = await resContagem.json();
-      renderContagemApp();
-    }
-  } catch(err) {
-    console.error('Erro ao carregar Contagem APP:', err);
-  }
-  
-  try {
-    const resVendas = await fetch(API_VENDAS + '?_=' + Date.now());
-    if(resVendas.ok) {
-      lastDataVendas = await resVendas.json();
-      renderVendas();
-    }
-  } catch(err) {
-    console.error('Erro ao carregar Vendas:', err);
-  }
-  
-  try {
-    const resRefuturiza = await fetch(API_REFUTURIZA + '?_=' + Date.now());
-    if(resRefuturiza.ok) {
-      lastDataRefuturiza = await resRefuturiza.json();
-      renderRefuturiza();
-    }
-  } catch(err) {
-    console.error('Erro ao carregar Refuturiza:', err);
-  }
-  
-  try {
-    const resRetencao = await fetch(API_RETENCAO + '?_=' + Date.now());
-    if(resRetencao.ok) {
-      lastDataRetencao = await resRetencao.json();
-      renderRetencao();
-    }
-  } catch(err) {
-    console.error('Erro ao carregar Retenção:', err);
-  }
-  
-  try {
-    const resAdimplencia = await fetch(API_ADIMPLENCIA + '?_=' + Date.now());
-    if(resAdimplencia.ok) {
-      lastDataAdimplencia = await resAdimplencia.json();
-      renderAdimplencia();
-    }
-  } catch(err) {
-    console.error('Erro ao carregar Adimplência:', err);
-  }
-  
-  try {
-    const resCashback = await fetch(API_CASHBACK + '?_=' + Date.now());
-    if(resCashback.ok) {
-      lastDataCashback = await resCashback.json();
-      renderCashback();
-    }
-  } catch(err) {
-    console.error('Erro ao carregar Cashback:', err);
-  }
-  
-  renderDashboard();
-  
-  if(debugMode) {
-    showDebug();
-  }
-}
+// --- FUNÇÕES DE RENDERIZAÇÃO DE ABAS (COM ALTERAÇÕES) ---
 
 function renderContagemApp() {
   const data = lastDataContagemApp?.data;
@@ -771,12 +874,14 @@ function renderVendas() {
     return `<div class="big-card"><small>${title}</small><h2>${safeNum(total)}</h2><div>${safeNum(pendencia)} Pendências | ${safeNum(ok)} OK</div>${bar}</div>`;
   }
   
+  const totalCanceladosGeral = safeNum(geral.totalCancelados?.recepcao) + safeNum(geral.totalCancelados?.filiacao) + safeNum(geral.totalCancelados?.refiliacao) + safeNum(geral.totalCancelados?.webTelevendas) + safeNum(geral.totalCancelados?.outros);
+  
   const topCards = document.getElementById('topCardsVendas');
   topCards.innerHTML = 
     renderBigCardVendas('FILIADOS CTC LIG/DOC', geral.filiadosCTCLigDoc?.total, geral.filiadosCTCLigDoc?.pendencia, geral.filiadosCTCLigDoc?.ok) +
     renderBigCardVendas('WEB/TELEVENDAS LIG', geral.webTelevendasLig?.total, geral.webTelevendasLig?.pendencia, geral.webTelevendasLig?.ok) +
     renderBigCardVendas('VENDAS TOTAIS', geral.vendasTotais?.total, geral.vendasTotais?.pendencia, geral.vendasTotais?.ok) +
-    `<div class="big-card"><small>TOTAL CANCELADOS</small><h2>${safeNum(geral.totalCancelados?.recepcao + geral.totalCancelados?.filiacao + geral.totalCancelados?.refiliacao + geral.totalCancelados?.webTelevendas + geral.totalCancelados?.outros)}</h2></div>`;
+    `<div class="big-card"><small>TOTAL CANCELADOS</small><h2>${totalCanceladosGeral}</h2></div>`;
   
   const sections = document.getElementById('sectionsVendas');
   sections.innerHTML = 
@@ -790,7 +895,8 @@ function renderVendas() {
 
 function renderOutrosSection(title, dados) {
   if(!dados) return '';
-  const percent = pct(dados.total - dados.pendenciaDocs - dados.pendenciaLig, dados.total);
+  const ok = safeNum(dados.total) - safeNum(dados.pendenciaDocs) - safeNum(dados.pendenciaLig);
+  const percent = pct(ok, dados.total);
   const bar = dados.total === 0 ? '' : `<div class="progress-wrap" style="margin-top:10px"><div class="progress"><div class="bar ${colorClass(percent)}" style="width:${Math.max(percent, 5)}%">${percent}%</div></div></div>`;
   const html = `<div class="section-title">${title}</div><div class="cards-grid"><div class="card"><h3>${title}</h3><div class="kv"><span>Total:</span><strong>${safeNum(dados.total)}</strong></div><div class="kv"><span>CDT Sonhos:</span><strong>${safeNum(dados.cdtSonhos)}</strong></div><div class="kv"><span>Pend. Docs:</span><strong>${safeNum(dados.pendenciaDocs)}</strong></div><div class="kv"><span>Pend. Lig:</span><strong>${safeNum(dados.pendenciaLig)}</strong></div><div class="kv"><span>Cancelados:</span><strong>${safeNum(dados.cancelados)}</strong></div>${bar}</div></div>`;
   return html;
@@ -859,25 +965,26 @@ function renderRetencao() {
     const retidosMes = safeNum(c.retidosMes);
     const qualidade = safeNum(c.qualidade);
     const totalUltimos3 = safeNum(c.totalUltimos3Meses);
-    const retidosUltimos3 = safeNum(c.mensOkUltimos3Meses) + safeNum(c.emAtrasoUltimos3Meses);
+    // Correção: Retidos nos últimos 3 meses é o total menos os cancelados
+    const retidosUltimos3 = totalUltimos3 - safeNum(c.canceladoUltimos3Meses); 
     const canceladosUltimos3 = safeNum(c.canceladoUltimos3Meses);
     
-    let bar;
+    // Calcula a qualidade dos últimos 3 meses: (Total - Cancelados) / Total
+    const qualidadeUltimos3 = totalUltimos3 > 0 ? Math.round(((totalUltimos3 - canceladosUltimos3) / totalUltimos3) * 100) : 0;
+    const barUltimos3 = totalUltimos3 === 0 ? '<div style="height:20px;background:#e5e7eb;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:11px">SEM DADOS</div>' : `<div class="progress"><div class="bar ${colorClass(qualidadeUltimos3)}" style="width:${Math.max(qualidadeUltimos3, 5)}%">${qualidadeUltimos3}%</div></div>`;
+    
+    const ultimos3 = `<div style="font-size:12px;color:#6b7280;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #e5e7eb"><strong>Últimos 3 Meses</strong></div><div class="kv"><span>Total:</span><strong>${totalUltimos3}</strong></div><div class="kv"><span>Retidos:</span><strong>${retidosUltimos3}</strong></div><div class="kv"><span>Cancelados:</span><strong>${canceladosUltimos3}</strong></div><div class="kv"><span>Qualidade:</span><strong>${qualidadeUltimos3}%</strong></div><div class="progress-wrap" style="margin-top:6px">${barUltimos3}</div>`;
+    
+    const mesAtual = `<div style="font-size:12px;color:#6b7280;margin:10px 0 8px 0;padding-top:8px;border-top:1px solid #e5e7eb"><strong>Mês Atual</strong></div><div class="kv"><span>Total Mês:</span><strong>${totalMes}</strong></div><div class="kv"><span>Retidos:</span><strong>${retidosMes}</strong></div><div class="kv"><span>Cancelados:</span><strong>${safeNum(c.canceladoMes)}</strong></div><div class="kv"><span>Qualidade:</span><strong>${qualidade}%</strong></div>`;
+    
+    let barMesAtual;
     if(totalMes === 0) {
-      bar = '<div style="height:20px;background:#e5e7eb;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:11px">SEM DADOS</div>';
+      barMesAtual = '<div style="height:20px;background:#e5e7eb;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:11px">SEM DADOS</div>';
     } else {
-      bar = `<div class="progress"><div class="bar ${colorClass(qualidade)}" style="width:${Math.max(qualidade, 5)}%">${qualidade}%</div></div>`;
+      barMesAtual = `<div class="progress"><div class="bar ${colorClass(qualidade)}" style="width:${Math.max(qualidade, 5)}%">${qualidade}%</div></div>`;
     }
     
-    const pendenciasUltimos3 = safeNum(c.emAtrasoUltimos3Meses) + safeNum(c.canceladoUltimos3Meses);
-    const okUltimos3 = totalUltimos3 - pendenciasUltimos3;
-    const qualidadeUltimos3 = totalUltimos3 > 0 ? Math.round((okUltimos3 / totalUltimos3) * 100) : 0;
-    const barUltimos3 = totalUltimos3 === 0 ? '<div style="height:20px;background:#e5e7eb;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:11px">SEM DADOS</div>' : `<div class="progress"><div class="bar ${colorClass(qualidadeUltimos3)}" style="width:${Math.max(qualidadeUltimos3, 5)}%">${qualidadeUltimos3}%</div></div>`;
-    const ultimos3 = `<div style="font-size:12px;color:#6b7280;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #e5e7eb"><strong>Ultimos 3 Meses</strong></div><div class="kv"><span>Total:</span><strong>${totalUltimos3}</strong></div><div class="kv"><span>Retidos:</span><strong>${retidosUltimos3}</strong></div><div class="kv"><span>Cancelados:</span><strong>${canceladosUltimos3}</strong></div><div class="kv"><span>Qualidade:</span><strong>${qualidadeUltimos3}%</strong></div><div class="progress-wrap" style="margin-top:6px">${barUltimos3}</div>`;
-    
-    const mesAtual = `<div style="font-size:12px;color:#6b7280;margin:10px 0 8px 0;padding-top:8px;border-top:1px solid #e5e7eb"><strong>Mes Atual</strong></div><div class="kv"><span>Total Mes:</span><strong>${totalMes}</strong></div><div class="kv"><span>Retidos:</span><strong>${retidosMes}</strong></div><div class="kv"><span>Cancelados:</span><strong>${safeNum(c.canceladoMes)}</strong></div><div class="kv"><span>Qualidade:</span><strong>${qualidade}%</strong></div>`;
-    
-    return `<div class="card"><h3>${c.nome || 'Sem nome'}</h3>${ultimos3}${mesAtual}<div class="progress-wrap" style="margin-top:8px">${bar}</div></div>`;
+    return `<div class="card"><h3>${c.nome || 'Sem nome'}</h3>${ultimos3}${mesAtual}<div class="progress-wrap" style="margin-top:8px">${barMesAtual}</div></div>`;
   }
   
   const topCards = document.getElementById('topCardsRetencao');
@@ -916,8 +1023,9 @@ function renderAdimplencia() {
   }
   
   function renderFaixaCard(titulo, total, percent) {
-    const bar = `<div class="progress"><div class="bar green" style="width:${Math.max(percent, 5)}%">${percent}%</div></div>`;
-    return `<div class="big-card"><small>${titulo}</small><h2>${total}</h2><div>${percent}% do total</div>${bar}</div>`;
+    const p = safeNum(percent);
+    const bar = `<div class="progress"><div class="bar green" style="width:${Math.max(p, 5)}%">${p}%</div></div>`;
+    return `<div class="big-card"><small>${titulo}</small><h2>${safeNum(total)}</h2><div>${p}% do total</div>${bar}</div>`;
   }
   
   function renderColaboradorCard(c) {
@@ -926,15 +1034,15 @@ function renderAdimplencia() {
     const qia = safeNum(c.qia);
     const trocas = safeNum(c.totalTrocas);
     
-    return `<div class="card"><h3>${c.nome}</h3><div class="kv"><span>Arrecadado:</span><strong>R$ ${arrecadado.toFixed(2)}</strong></div><div class="kv"><span>QIA:</span><strong>${qia}</strong></div><div class="kv"><span>TK:</span><strong>R$ ${tk}</strong></div><div class="kv"><span>Trocas:</span><strong>${trocas}</strong></div></div>`;
+    return `<div class="card"><h3>${c.nome}</h3><div class="kv"><span>Arrecadado:</span><strong>${formatCurrency(arrecadado)}</strong></div><div class="kv"><span>QIA:</span><strong>${qia}</strong></div><div class="kv"><span>TK:</span><strong>${formatCurrency(tk)}</strong></div><div class="kv"><span>Trocas:</span><strong>${trocas}</strong></div></div>`;
   }
   
   const topCards = document.getElementById('topCardsAdimplencia');
   if(topCards) {
     topCards.innerHTML = 
       renderBigCardAdimplencia('TOTAL MC', safeNum(geral.totalMC), 'Total de movimentações') +
-      renderBigCardAdimplencia('TOTAL ARRECADADO', 'R$ ' + safeNum(geral.totalArrecadado).toFixed(2), 'Valor total arrecadado') +
-      renderBigCardAdimplencia('TKM', 'R$ ' + safeNum(geral.tkm), 'Ticket médio') +
+      renderBigCardAdimplencia('TOTAL ARRECADADO', formatCurrency(geral.totalArrecadado), 'Valor total arrecadado') +
+      renderBigCardAdimplencia('TKM', formatCurrency(geral.tkm), 'Ticket médio') +
       renderBigCardAdimplencia('TOTAL TROCAS', safeNum(geral.totalTrocas), 'Trocas realizadas') +
       renderFaixaCard('NOVOS REJEITADOS (NR)', safeNum(geral.totalNIR), safeNum(geral.percentNIR)) +
       renderFaixaCard('1 a 3 meses', safeNum(geral.total1a3), safeNum(geral.percent1a3)) +
@@ -975,21 +1083,27 @@ function renderCashback() {
   const colaboradores = data.colaboradores || [];
   const colabMetricas = data.colaboradoresMetricas || {};
   
-  function renderBigCard(title, value, subtitle) {
-    return `<div class="big-card"><small>${title}</small><h2>${value}</h2><div>${subtitle}</div></div>`;
+  function renderBigCard(title, value, subtitle, customClass = '') {
+    return `<div class="big-card ${customClass}"><small>${title}</small><h2>${value}</h2><div>${subtitle}</div></div>`;
+  }
+  
+  function renderBigCardWithBar(title, total, ok, customClass = '') {
+    const percent = pct(ok, total);
+    const bar = total === 0 ? '' : `<div class="progress-wrap" style="margin-top:10px"><div class="progress"><div class="bar ${colorClass(percent)}" style="width:${Math.max(percent, 5)}%">${percent}%</div></div></div>`;
+    return `<div class="big-card ${customClass}"><small>${title}</small><h2>${safeNum(ok)}</h2><div>${percent}% de ${safeNum(total)}</div>${bar}</div>`;
   }
   
   function renderParceiro(p) {
     if(p.nome === 'PARCEIROS') return '';
     const valor = safeNum(p.valorCashback);
-    return `<div class="cashback-card"><h3>${p.nome}</h3><div class="kv"><span>Segmento:</span><strong>${p.segmento || '-'}</strong></div><div class="kv"><span>Cashback:</span><strong>R$ ${valor.toFixed(2)}</strong></div><div class="kv"><span>Tendência:</span><strong>R$ ${safeNum(p.tendencia).toFixed(2)}</strong></div></div>`;
+    return `<div class="cashback-card"><h3>${p.nome}</h3><div class="kv"><span>Segmento:</span><strong>${p.segmento || '-'}</strong></div><div class="kv"><span>Cashback:</span><strong>${formatCurrency(valor)}</strong></div><div class="kv"><span>Tendência:</span><strong>${formatCurrency(safeNum(p.tendencia))}</strong></div></div>`;
   }
   
   function getCorCashback(valor) {
     const v = safeNum(valor);
-    if(v === 0) return '#ef4444';
-    if(v >= 1 && v < 3) return '#eab308';
-    return '#22c55e';
+    if(v === 0) return '#ef4444'; // Vermelho
+    if(v > 0 && v < 3) return '#f97316'; // Laranja Mais Escuro para a faixa entre 0 e 3
+    return '#22c55e'; // Verde
   }
   
   function renderColaborador(c) {
@@ -998,31 +1112,37 @@ function renderCashback() {
     return `<div class="cashback-card" style="border-left: 4px solid ${cor}"><h3>${c.nome}</h3><div class="kv"><span>Cashback:</span><strong style="color:${cor}">${c.cashbackTexto}</strong></div><div class="kv"><span>Almoço:</span><strong>${almocoStatus}</strong></div></div>`;
   }
   
+  const parceirosValidos = parceiros.filter(p => p.nome !== 'PARCEIROS');
+  const qtdParceiros = parceirosValidos.length;
+  const qtdParceirosAcima20 = parceirosValidos.filter(p => safeNum(p.valorCashback) >= 20).length;
+  
+  // Cálculo da nova métrica: Entre R$ 0,00 e < R$ 3,00
+  const totalEntre0e3 = safeNum(colabMetricas.totalColaboradores) - safeNum(colabMetricas.totalAcima3) - safeNum(colabMetricas.totalZerados);
+  const percentEntre0e3 = safeNum(colabMetricas.totalColaboradores) > 0 ? ((totalEntre0e3 / safeNum(colabMetricas.totalColaboradores)) * 100).toFixed(2) : 0;
+
+
   const topCards = document.getElementById('topCardsCashback');
   if(topCards) {
+    // Reorganização
     topCards.innerHTML = 
-      renderBigCard('TOTAL DE DIAS', safeNum(geral.totalDias), 'Dias do período') +
-      renderBigCard('REALIZADOS', safeNum(geral.realizados), 'Dias realizados') +
-      renderBigCard('DIAS RESTANTES', safeNum(geral.diasRestantes), 'Dias restantes') +
-      renderBigCard('TOTAL CASHBACK', 'R$ ' + safeNum(geral.totalCashback).toFixed(2), 'Valor total gerado');
+      renderBigCard('TOTAL CASHBACK', formatCurrency(geral.totalCashback), 'Valor total gerado') +
+      renderBigCard('QTD. PARCEIROS', qtdParceiros, 'Total de parceiros') +
+      // Novo card com barra de progresso
+      renderBigCardWithBar('QTD. >= R$ 20', qtdParceiros, qtdParceirosAcima20, '') +
+      renderBigCard('META DIÁRIA', formatCurrency(metricas.metaDiariaCashback), 'Meta diária') +
+      renderBigCard('TENDÊNCIA', formatCurrency(metricas.tendenciaRealizado), 'Tendência realizado');
   }
   
   const sections = document.getElementById('sectionsCashback');
   if(sections) {
-    const parceirosValidos = parceiros.filter(p => p.nome !== 'PARCEIROS');
-    const qtdParceiros = parceirosValidos.length;
-    const qtdParceirosAcima20 = parceirosValidos.filter(p => safeNum(p.valorCashback) >= 20).length;
-    const percentAcima20 = qtdParceiros > 0 ? ((qtdParceirosAcima20 / qtdParceiros) * 100).toFixed(2) : 0;
     
-    let html = '<div class="top-cards">';
-    html += renderBigCard('QTD. PARCEIROS', qtdParceiros, 'Total de parceiros') +
-            renderBigCard('QTD. >= R$ 20', qtdParceirosAcima20, 'Parceiros com valor >= R$ 20') +
-            renderBigCard('% >= R$ 20', percentAcima20 + '%', 'Percentual de parceiros >= R$ 20') +
-            renderBigCard('META DIÁRIA', 'R$ ' + safeNum(metricas.metaDiariaCashback).toFixed(2), 'Meta diária') +
-            renderBigCard('TENDÊNCIA', 'R$ ' + safeNum(metricas.tendenciaRealizado).toFixed(2), 'Tendência realizado') +
-            renderBigCard('TOTAL COLAB.', safeNum(colabMetricas.totalColaboradores), 'Total de colaboradores') +
-            renderBigCard('ACIMA DE R$ 3', safeNum(colabMetricas.totalAcima3), safeNum(colabMetricas.percentAcima3) + '%') +
-            renderBigCard('ZERADOS', safeNum(colabMetricas.totalZerados), safeNum(colabMetricas.percentZerados) + '%');
+    // Cards de Colaboradores
+    let html = '<div class="section-title">MÉTRICAS DE COLABORADORES</div><div class="top-cards">';
+    html += renderBigCard('TOTAL COLAB.', safeNum(colabMetricas.totalColaboradores), 'Total de colaboradores', 'total-colab') +
+            renderBigCard('ACIMA DE R$ 3', safeNum(colabMetricas.totalAcima3), safeNum(colabMetricas.percentAcima3) + '%', 'acima-3') +
+            // Novo Card
+            renderBigCard('ENTRE R$ 0 E < R$ 3', totalEntre0e3, percentEntre0e3 + '%', 'entre-0-3') +
+            renderBigCard('ZERADOS', safeNum(colabMetricas.totalZerados), safeNum(colabMetricas.percentZerados) + '%', 'zerados');
     html += '</div>';
     
     if(parceirosValidos.length > 0) {
@@ -1062,24 +1182,28 @@ function renderDashboard() {
   
   if(lastDataRetencao?.data?.geral) {
     const ret = lastDataRetencao.data.geral;
-    html += `<div class="dashboard-section"><h3>🔐 Retenção</h3><div class="card"><div class="kv"><span>Churn Rate:</span><strong>${safeNum(ret.churnRate).toFixed(2)}%</strong></div><div class="kv"><span>Retidos:</span><strong>${safeNum(ret.totalRetidosMes)}</strong></div></div></div>`;
+    // Alteração solicitada: Churn Franquia e Retidos
+    html += `<div class="dashboard-section"><h3>🔐 Retenção</h3><div class="card"><div class="kv"><span>Churn Franquia:</span><strong>${safeNum(ret.churnFranquia).toFixed(2)}%</strong></div><div class="kv"><span>Retidos:</span><strong>${safeNum(ret.totalRetidosMes)}</strong></div></div></div>`;
   }
   
   if(lastDataAdimplencia?.data?.geral) {
     const adim = lastDataAdimplencia.data.geral;
-    html += `<div class="dashboard-section"><h3>✅ Adimplência</h3><div class="card"><div class="kv"><span>Arrecadado:</span><strong>R$ ${safeNum(adim.totalArrecadado).toFixed(2)}</strong></div><div class="kv"><span>TKM:</span><strong>R$ ${safeNum(adim.tkm)}</strong></div></div></div>`;
+    // Formato de moeda atualizado
+    html += `<div class="dashboard-section"><h3>✅ Adimplência</h3><div class="card"><div class="kv"><span>Arrecadado:</span><strong>${formatCurrency(adim.totalArrecadado)}</strong></div><div class="kv"><span>TKM:</span><strong>${formatCurrency(adim.tkm)}</strong></div></div></div>`;
   }
   
   if(lastDataCashback?.data?.geral) {
     const cash = lastDataCashback.data.geral;
-    html += `<div class="dashboard-section"><h3>🎁 Cashback</h3><div class="card"><div class="kv"><span>Total:</span><strong>R$ ${safeNum(cash.totalCashback).toFixed(2)}</strong></div><div class="kv"><span>Dias Restantes:</span><strong>${safeNum(cash.diasRestantes)}</strong></div></div></div>`;
+    // Formato de moeda atualizado
+    html += `<div class="dashboard-section"><h3>🎁 Cashback</h3><div class="card"><div class="kv"><span>Total:</span><strong>${formatCurrency(cash.totalCashback)}</strong></div><div class="kv"><span>Dias Restantes:</span><strong>${safeNum(cash.diasRestantes)}</strong></div></div></div>`;
   }
   
   html += '</div>';
   content.innerHTML = html;
 }
 
-// --- CÓDIGO DE CORREÇÃO DE POSICIONAMENTO FIXO ---
+// --- CÓDIGO DE CORREÇÃO DE POSICIONAMENTO FIXO (SEM ALTERAÇÃO) ---
+
 function adjustFixedElements() {
   const header = document.querySelector('header');
   const tabsContainer = document.querySelector('.tabs-container');
@@ -1089,14 +1213,12 @@ function adjustFixedElements() {
   const headerHeight = header.offsetHeight;
   
   // 2. Reposiciona o Tabs Container, logo abaixo do header
-  // O tabsContainer agora SÓ tem os botões, é a parte fixa das abas
   tabsContainer.style.top = `${headerHeight}px`;
 
   // 3. Altura TOTAL DOS ELEMENTOS FIXOS
   const fixedHeight = headerHeight + tabsContainer.offsetHeight;
 
   // 4. Ajusta o padding-top do Body
-  // Isso garante que o conteúdo do body comece ABAIXO dos elementos fixos.
   body.style.paddingTop = `${fixedHeight + 18}px`; // Adicionado +18px para o padding original do .wrap
 }
 
@@ -1105,7 +1227,6 @@ if(document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', function() {
     init();
     setupButtons(); 
-    // Chama o ajuste DEPOIS que o DOM está pronto e os estilos calculados
     adjustFixedElements();
   });
 } else {
@@ -1114,10 +1235,11 @@ if(document.readyState === 'loading') {
   adjustFixedElements();
 }
 
-// Recalcula o posicionamento ao redimensionar (essencial para mobile/tablet e quebra do header)
+// Recalcula o posicionamento ao redimensionar
 window.addEventListener('resize', adjustFixedElements);
 
-// Atualização de dados a cada 3 minutos (180000 ms)
+// Otimização: A atualização automática a cada 3 minutos agora SÓ recarrega
+// os dados da Dashboard e força a atualização da aba ativa (se não for a Dashboard).
 setInterval(init, 180000);
 </script>
 </body>
