@@ -58,6 +58,14 @@
     margin:0;
     color:var(--accent);
     font-size:24px;
+    display: none; /* Oculta o título original para usar a logo */
+  }
+
+  /* NOVO: Estilo para a logo no cabeçalho */
+  .header-logo {
+    height: 40px; /* Altura sugerida para a logo */
+    width: auto;
+    margin-bottom: 5px; 
   }
   
   .actions{
@@ -388,7 +396,7 @@
 <body>
   <header>
     <div>
-      <h1>📊 DASHBOARD INTEGRADO</h1>
+      <img src="https://drive.google.com/uc?export=view&id=1nwnG0H6bjVQWtp14g7eOg0qR5th8qmJD" alt="Logo da Empresa" class="header-logo">
       <div style="font-size:13px;color:var(--muted)">Sistema de Gestão Integrado</div>
     </div>
     <div class="actions">
@@ -908,7 +916,7 @@ function renderRetencao() {
     
     topCards.innerHTML = 
       renderBigCardRetencao('TAXA DE RETENÇÃO', taxaRetencao + '%', 'Retidos / (Retidos + Cancelados)') +
-      renderBigCardRetencao('CHURN FRANQUIA', safeNum(geral.churnFranquia).toFixed(2) + '%', 'Cancelados dos consultores') +
+      renderBigCardRetencao('CHURN FRANQUIA', safeNum(geral.churnFranquia).toFixed(2) + '%', 'Cancelados dos consultores') + // ALTERAÇÃO SOLICITADA AQUI
       renderBigCardRetencao('CHURN RATE', safeNum(geral.churnRate).toFixed(2) + '%', 'Total de cancelados') +
       renderBigCardRetencao('TOTAL CANCELADOS MÊS', safeNum(geral.totalCanceladosMes), 'Cancelamentos do mês') +
       renderBigCardRetencao('TOTAL RETIDOS MÊS', safeNum(geral.totalRetidosMes), 'Clientes retidos');
