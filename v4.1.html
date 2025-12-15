@@ -467,7 +467,7 @@
 const API_CONTAGEM_APP = "https://script.google.com/macros/s/AKfycby6ip-dZkmDIrG3GhutwY3t40DprmNlUxIf9kMBefFwzosOFri9nq2dSArTQVb1CUxF/exec";
 const API_VENDAS = "https://script.google.com/macros/s/AKfycbz2iN8BFtjs0GHD1W84c0hNvRJIuJu3pmv-L0YcboGSgLhd2LQNOJMieJLTNWQC/exec";
 const API_REFUTURIZA = "https://script.google.com/macros/s/AKfycbwjrD4H1nK8CTpSVT0n7T9BYonh-F5s7zx3E9QVeiJuO1vgFGMCqnWgYH0einPPjxYl/exec";
-const API_RETENCAO = "https://script.google.com/macros/s/AKfycbyXDAGOZn9VUNMMlAE-RtQpIFr70TndFXp_WLC1bErHDkjQyKfdr-gWoYJZmRhjjA/exec";
+const API_RETENCAO = "https://script.google.com/macros/s/AKfycbxUWbxmDov0bPZKhbEijYM_03ZwcpUkwpOT2QAMJO8MChSFSVrvt-nsyW5zSO-kQN8s/exec";
 const API_ADIMPLENCIA = "https://script.google.com/macros/s/AKfycbzJ5TZAmTBpoZiT4Wss9RvdguIPaPHaJrakHvqz0qReCyC21oweNt84feMFMvmC118U/exec";
 const API_CASHBACK = "https://script.google.com/macros/s/AKfycbxfI9vHstylYG7vjjf_5xDa_ElnBe9qcd6neiK4-bvoA6YrSK0MzY2Eq9jrAvOt2BnY/exec";
 
@@ -908,6 +908,20 @@ function renderRetencao() {
     return `<div class="card"><h3>${c.nome || 'Sem nome'}</h3>${ultimos3}${mesAtual}<div class="progress-wrap" style="margin-top:8px">${bar}</div></div>`;
   }
   
+  function renderConsultoraCardSemMesAtual(c) {
+    const totalUltimos3 = safeNum(c.totalUltimos3Meses);
+    const retidosUltimos3 = safeNum(c.mensOkUltimos3Meses) + safeNum(c.emAtrasoUltimos3Meses);
+    const canceladosUltimos3 = safeNum(c.canceladoUltimos3Meses);
+    
+    const pendenciasUltimos3 = safeNum(c.emAtrasoUltimos3Meses) + safeNum(c.canceladoUltimos3Meses);
+    const okUltimos3 = totalUltimos3 - pendenciasUltimos3;
+    const qualidadeUltimos3 = totalUltimos3 > 0 ? Math.round((okUltimos3 / totalUltimos3) * 100) : 0;
+    const barUltimos3 = totalUltimos3 === 0 ? '<div style="height:20px;background:#e5e7eb;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:11px">SEM DADOS</div>' : `<div class="progress"><div class="bar ${colorClass(qualidadeUltimos3)}" style="width:${Math.max(qualidadeUltimos3, 5)}%">${qualidadeUltimos3}%</div></div>`;
+    const ultimos3 = `<div style="font-size:12px;color:#6b7280;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #e5e7eb"><strong>Ultimos 3 Meses</strong></div><div class="kv"><span>Total:</span><strong>${totalUltimos3}</strong></div><div class="kv"><span>Retidos:</span><strong>${retidosUltimos3}</strong></div><div class="kv"><span>Cancelados:</span><strong>${canceladosUltimos3}</strong></div><div class="kv"><span>Qualidade:</span><strong>${qualidadeUltimos3}%</strong></div><div class="progress-wrap" style="margin-top:6px">${barUltimos3}</div>`;
+    
+    return `<div class="card"><h3>${c.nome || 'Sem nome'}</h3>${ultimos3}</div>`;
+  }
+  
   const topCards = document.getElementById('topCardsRetencao');
   if(topCards) {
     const totalRetidos = safeNum(geral.totalRetidosMes);
@@ -927,7 +941,20 @@ function renderRetencao() {
     if(consultoras.length === 0) {
       sections.innerHTML = '<div class="section-title">CONSULTORAS <span style="color:#9ca3af;font-size:14px;font-weight:400">(vazio)</span></div>';
     } else {
-      sections.innerHTML = `<div class="section-title">CONSULTORAS - ÚLTIMOS 3 MESES + MÊS ATUAL</div><div class="cards-grid">${consultoras.map(renderConsultoraCard).join('')}</div>`;
+      const comMesAtual = consultoras.filter(c => c.tipo === 'retencao');
+      const semMesAtual = consultoras.filter(c => c.tipo === 'refiliacao');
+      
+      let html = '';
+      
+      if(comMesAtual.length > 0) {
+        html += `<div class="section-title">CONSULTORAS - ÚLTIMOS 3 MESES + MÊS ATUAL</div><div class="cards-grid">${comMesAtual.map(renderConsultoraCard).join('')}</div>`;
+      }
+      
+      if(semMesAtual.length > 0) {
+        html += `<div class="section-title" style="margin-top:30px">CONSULTORAS - ÚLTIMOS 3 MESES (Recorrência)</div><div class="cards-grid">${semMesAtual.map(renderConsultoraCardSemMesAtual).join('')}</div>`;
+      }
+      
+      sections.innerHTML = html;
     }
   }
 }
@@ -1181,4 +1208,5 @@ setInterval(init, 180000);
 </script>
 </body>
 </html>
+
 
