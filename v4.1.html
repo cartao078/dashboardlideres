@@ -467,7 +467,7 @@
 const API_CONTAGEM_APP = "https://script.google.com/macros/s/AKfycby6ip-dZkmDIrG3GhutwY3t40DprmNlUxIf9kMBefFwzosOFri9nq2dSArTQVb1CUxF/exec";
 const API_VENDAS = "https://script.google.com/macros/s/AKfycbz2iN8BFtjs0GHD1W84c0hNvRJIuJu3pmv-L0YcboGSgLhd2LQNOJMieJLTNWQC/exec";
 const API_REFUTURIZA = "https://script.google.com/macros/s/AKfycbwjrD4H1nK8CTpSVT0n7T9BYonh-F5s7zx3E9QVeiJuO1vgFGMCqnWgYH0einPPjxYl/exec";
-const API_RETENCAO = "https://script.google.com/macros/s/AKfycbxUWbxmDov0bPZKhbEijYM_03ZwcpUkwpOT2QAMJO8MChSFSVrvt-nsyW5zSO-kQN8s/exec";
+const API_RETENCAO = "https://script.google.com/macros/s/AKfycbzjQFDwj46u6Ymz33aT0SqVctD5Kvg4wkexeubg49rKl6OOXBoBdFnEASlFS5XRKhhZ/exec";
 const API_ADIMPLENCIA = "https://script.google.com/macros/s/AKfycbzJ5TZAmTBpoZiT4Wss9RvdguIPaPHaJrakHvqz0qReCyC21oweNt84feMFMvmC118U/exec";
 const API_CASHBACK = "https://script.google.com/macros/s/AKfycbxfI9vHstylYG7vjjf_5xDa_ElnBe9qcd6neiK4-bvoA6YrSK0MzY2Eq9jrAvOt2BnY/exec";
 
@@ -885,6 +885,10 @@ function renderRetencao() {
   function renderConsultoraCard(c) {
     const totalMes = safeNum(c.totalMes);
     const retidosMes = safeNum(c.retidosMes);
+    const retidosOkMes = safeNum(c.retidosOkMes);
+
+    const semDocumentos = retidosMes - retidosOkMes;
+    const retidosOkCalculado = totalMes - semDocumentos;
     const qualidade = safeNum(c.qualidade);
     const totalUltimos3 = safeNum(c.totalUltimos3Meses);
     const retidosUltimos3 = safeNum(c.mensOkUltimos3Meses) + safeNum(c.emAtrasoUltimos3Meses);
@@ -903,7 +907,7 @@ function renderRetencao() {
     const barUltimos3 = totalUltimos3 === 0 ? '<div style="height:20px;background:#e5e7eb;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:11px">SEM DADOS</div>' : `<div class="progress"><div class="bar ${colorClass(qualidadeUltimos3)}" style="width:${Math.max(qualidadeUltimos3, 5)}%">${qualidadeUltimos3}%</div></div>`;
     const ultimos3 = `<div style="font-size:12px;color:#6b7280;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #e5e7eb"><strong>Ultimos 3 Meses</strong></div><div class="kv"><span>Total:</span><strong>${totalUltimos3}</strong></div><div class="kv"><span>Retidos:</span><strong>${retidosUltimos3}</strong></div><div class="kv"><span>Cancelados:</span><strong>${canceladosUltimos3}</strong></div><div class="kv"><span>Qualidade:</span><strong>${qualidadeUltimos3}%</strong></div><div class="progress-wrap" style="margin-top:6px">${barUltimos3}</div>`;
     
-    const mesAtual = `<div style="font-size:12px;color:#6b7280;margin:10px 0 8px 0;padding-top:8px;border-top:1px solid #e5e7eb"><strong>Mes Atual</strong></div><div class="kv"><span>Total Mes:</span><strong>${totalMes}</strong></div><div class="kv"><span>Retidos:</span><strong>${retidosMes}</strong></div><div class="kv"><span>Cancelados:</span><strong>${safeNum(c.canceladoMes)}</strong></div><div class="kv"><span>Qualidade:</span><strong>${qualidade}%</strong></div>`;
+    const mesAtual = `<div style="font-size:12px;color:#6b7280;margin:10px 0 8px 0;padding-top:8px;border-top:1px solid #e5e7eb"><strong>Mes Atual</strong></div><div class="kv"><span>Total Mes:</span><strong>${totalMes}</strong></div><div class="kv"><span>Retidos OK:</span><strong>${retidosOkCalculado}</strong></div><div class="kv"><span>Cancelados:</span><strong>${safeNum(c.canceladoMes)}</strong></div><div class="kv"><span>Qualidade:</span><strong>${qualidade}%</strong></div>`;
     
     return `<div class="card"><h3>${c.nome || 'Sem nome'}</h3>${ultimos3}${mesAtual}<div class="progress-wrap" style="margin-top:8px">${bar}</div></div>`;
   }
@@ -1148,7 +1152,7 @@ function renderDashboard() {
   // Alteração solicitada: Churn Rate por Churn Franquia
   if(lastDataRetencao?.data?.geral) {
     const ret = lastDataRetencao.data.geral;
-    html += `<div class="dashboard-section"><h3>🔐 Retenção</h3><div class="card"><div class="kv"><span>Churn Franquia:</span><strong>${safeNum(ret.churnFranquia).toFixed(2)}%</strong></div><div class="kv"><span>Retidos:</span><strong>${safeNum(ret.totalRetidosMes)}</strong></div></div></div>`;
+    html += `<div class="dashboard-section"><h3>🔐 Retenção</h3><div class="card"><div class="kv"><span>Churn Franquia:</span><strong>${safeNum(ret.churnFranquia).toFixed(2)}%</strong></div><div class="kv"><span>Retidos OK:</span><strong>${safeNum(ret.totalRetidosMes)}</strong></div></div></div>`;
   }
   
   if(lastDataAdimplencia?.data?.geral) {
@@ -1208,5 +1212,7 @@ setInterval(init, 180000);
 </script>
 </body>
 </html>
+
+
 
 
