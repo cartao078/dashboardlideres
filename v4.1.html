@@ -1073,7 +1073,8 @@ function renderCashback() {
   if(topCards) {
     // Apenas o TOTAL CASHBACK (os outros 3 foram removidos)
     topCards.innerHTML = 
-      renderBigCard('TOTAL CASHBACK', formatCurrency(geral.totalCashback), 'Valor total gerado');
+      renderBigCard('TOTAL CASHBACK', formatCurrency(geral.totalCashback), 'Valor total gerado') +
+      renderBigCard('USUÁRIOS ÚNICOS', safeNum(metricas.realizadoUsuarios), 'Usuários únicos realizados');
   }
 
   // --- SECTIONS (Bloco 2 e Colaboradores) ---
@@ -1104,7 +1105,13 @@ function renderCashback() {
     html += renderBigCard('QTD. >= R$ 20', qtdParceirosAcima20, 'Parceiros com valor >= R$ 20', '', mergedBarHtml);
     html += renderBigCard('META DIÁRIA', formatCurrency(metricas.metaDiariaCashback), 'Meta diária');
     html += renderBigCard('TENDÊNCIA', formatCurrency(metricas.tendenciaRealizado), 'Tendência realizado');
-    
+
+    // ADICIONE ESTAS 2 LINHAS:
+    const metaUsuarios = safeNum(metricas.metaUsuariosUnicos);
+    const percentualUsuarios = metaUsuarios > 0 ? ((safeNum(metricas.realizadoUsuarios) / metaUsuarios) * 100) : 0;
+    const barUsuariosHtml = `<div class="progress-wrap" style="margin-top:10px"><div class="progress"><div class="bar ${colorClass(percentualUsuarios)}" style="width:${Math.max(percentualUsuarios, 5)}%">${percentualUsuarios.toFixed(2)}%</div></div></div>`;
+    html += renderBigCard('USUÁRIOS ÚNICOS', safeNum(metricas.realizadoUsuarios), `Meta: ${metaUsuarios} | ${percentualUsuarios.toFixed(2)}%`, '', barUsuariosHtml);
+
     // Cards Colaboradores (Cor Laranja)
     html += renderBigCard('TOTAL COLAB.', safeNum(colabMetricas.totalColaboradores), 'Total de colaboradores', collabClass);
     html += renderBigCard('ACIMA DE R$ 3', safeNum(colabMetricas.totalAcima3), safeNum(colabMetricas.percentAcima3) + '%', collabClass);
