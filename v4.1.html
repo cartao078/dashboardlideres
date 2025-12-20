@@ -882,6 +882,25 @@ function renderRetencao() {
     return `<div class="big-card"><small>${title}</small><h2>${value}</h2><div>${subtitle}</div></div>`;
   }
   
+  function renderConsultoraRetencaoCard(nome) {
+    const consultora = consultoras.find(c => c.nome?.toUpperCase() === nome.toUpperCase());
+    if(!consultora) return '';
+    
+    const retidosOk = safeNum(consultora.retidosOkMes);
+    const cancelados = safeNum(consultora.cancelamentosConta);
+    const total = retidosOk + cancelados;
+    const percentagem = total > 0 ? Math.round((retidosOk / total) * 100) : 0;
+    
+    let bar;
+    if(total === 0) {
+      bar = '<div style="height:20px;background:#e5e7eb;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:11px">SEM DADOS</div>';
+    } else {
+      bar = `<div class="progress"><div class="bar ${colorClass(percentagem)}" style="width:${Math.max(percentagem, 5)}%">${percentagem}%</div></div>`;
+    }
+    
+    return `<div class="card"><h3>${consultora.nome || 'Sem nome'}</h3><div class="kv"><span>Retidos OK:</span><strong>${retidosOk}</strong></div><div class="kv"><span>Cancelados:</span><strong>${cancelados}</strong></div><div class="progress-wrap" style="margin-top:12px">${bar}</div></div>`;
+  }
+  
   function renderConsultoraCard(c) {
     const totalMes = safeNum(c.totalMes);
     const retidosMes = safeNum(c.retidosMes);
@@ -932,12 +951,22 @@ function renderRetencao() {
     const totalCancelados = safeNum(geral.totalCanceladosMes);
     const taxaRetencao = (totalRetidos + totalCancelados) > 0 ? ((totalRetidos / (totalRetidos + totalCancelados)) * 100).toFixed(2) : 0;
     
-    topCards.innerHTML = 
-      renderBigCardRetencao('TAXA DE RETENÇÃO', taxaRetencao + '%', 'Retidos / (Retidos + Cancelados)') +
-      renderBigCardRetencao('CHURN FRANQUIA', safeNum(geral.churnFranquia).toFixed(2) + '%', 'Cancelados dos consultores') + // ALTERAÇÃO SOLICITADA AQUI
-      renderBigCardRetencao('CHURN RATE', safeNum(geral.churnRate).toFixed(2) + '%', 'Total de cancelados') +
-      renderBigCardRetencao('TOTAL CANCELADOS MÊS', safeNum(geral.totalCanceladosMes), 'Cancelamentos do mês') +
-      renderBigCardRetencao('TOTAL RETIDOS MÊS', safeNum(geral.totalRetidosMes), 'Clientes retidos');
+    let html = '';
+    html += renderBigCardRetencao('TAXA DE RETENCAO', taxaRetencao + '%', 'Retidos / (Retidos + Cancelados)');
+    html += renderBigCardRetencao('CHURN FRANQUIA', safeNum(geral.churnFranquia).toFixed(2) + '%', 'Cancelados dos consultores');
+    html += renderBigCardRetencao('CHURN RATE', safeNum(geral.churnRate).toFixed(2) + '%', 'Total de cancelados');
+    html += renderBigCardRetencao('TOTAL CANCELADOS MES', safeNum(geral.totalCanceladosMes), 'Cancelamentos do mes');
+    html += renderBigCardRetencao('TOTAL RETIDOS MES', safeNum(geral.totalRetidosMes), 'Clientes retidos');
+    
+    const kamylaCard = renderConsultoraRetencaoCard('Kamyla');
+    const jhaneCard = renderConsultoraRetencaoCard('Jhane');
+    
+    if(kamylaCard || jhaneCard) {
+      html += '<div style="grid-column: 1 / -1; margin-top: 20px; margin-bottom: 12px; font-weight: 800; color: #111827; font-size: 18px;">RETENCAO POR CONSULTORA</div>';
+      html += '<div style="grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px;">' + kamylaCard + jhaneCard + '</div>';
+    }
+    
+    topCards.innerHTML = html;
   }
   
   const sections = document.getElementById('sectionsRetencao');
@@ -1219,6 +1248,7 @@ setInterval(init, 180000);
 </script>
 </body>
 </html>
+
 
 
 
