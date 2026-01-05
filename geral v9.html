@@ -219,35 +219,12 @@ document.querySelectorAll('.tab-button').forEach(btn => {
   });
 });
 
-function setupButtons() {
-  document.getElementById('reload').onclick = () => {
-    const btn = document.getElementById('reload');
-    btn.innerHTML = '⏳ Carregando...';
-    btn.disabled = true;
-    init().then(() => {
-      btn.innerHTML = '✅ Atualizado!';
-      setTimeout(() => {
-        btn.innerHTML = '🔄 Recarregar Dados';
-        btn.disabled = false;
-      }, 2000);
-    });
-  };
-  
-  document.getElementById('downloadBtn').onclick = () => {
-    const activePane = document.querySelector('.tab-pane.active');
-    html2canvas(activePane, { backgroundColor: '#eef1f8', scale: 2, useCORS: true }).then(canvas => {
-      const link = document.createElement('a'); link.href = canvas.toDataURL('image/png'); link.download = `Dashboard_${new Date().getTime()}.png`; link.click();
-    });
-  };
-}
-
 function safeNum(v) { if(v === null || v === undefined || v === '') return 0; const n = Number(v); return isNaN(n) ? 0 : n; }
 function formatCurrency(v) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(safeNum(v)); }
 function pct(ok, total) { const t = safeNum(total); return t > 0 ? Math.round((safeNum(ok) / t) * 100) : 0; }
 function colorClass(p) { if(p >= 89) return 'green'; if(p >= 85) return 'yellow'; return 'red'; }
 function isInactive(p) { const s = String(p.status || '').toLowerCase(); return s === 'inativa' || s === 'ferias' || s === 'férias' || s === 'ausente'; }
 
-// RENDERIZADORES ORIGINAIS RESTAURADOS
 function renderPersonCardContagem(p) {
   const total = safeNum(p.t), sem = safeNum(p.s), ok = safeNum(p.o), percent = pct(ok, total);
   const cls = isInactive(p) ? 'card inativa' : 'card';
@@ -282,12 +259,46 @@ function renderPersonCardVendasNovo(p) {
 
 function renderVendas() {
   if(!lastDataVendas) return;
-  const g = lastDataVendas.geral || {vendas: 0, aprovados: 0, pendentes: 0, cancelados: 0}, q = g.vendas > 0 ? Math.round((g.aprovados / g.vendas) * 100) : 0;
-  const renderBig = (t, v, s) => `<div class="big-card"><small>${t}</small><h2>${safeNum(v)}</h2><div>${s}</div></div>`;
-  document.getElementById('topCardsVendas').innerHTML = renderBig('TOTAL VENDAS', g.vendas, `Mês: ${lastDataVendas.mes || ''}`) + renderBig('APROVADOS', g.aprovados, `Qualidade: ${q}%`) + renderBig('PENDENTES', g.pendentes, 'Aguardando') + renderBig('CANCELADOS', g.cancelados, 'Canceladas');
-  
-  // DESTAQUES POR TOTAL DE VENDAS (AJUSTADO)
   const cards = lastDataVendas.cards || [];
+  const g = lastDataVendas.geral || {vendas: 0, aprovados: 0, pendentes: 0, cancelados: 0}, q = g.vendas > 0 ? Math.round((g.aprovados / g.vendas) * 100) : 0;
+  
+  // Cálculo para Web e Televendas
+  const webTelevendas = cards.filter(c => {
+    const s = (c.setor || '').toUpperCase();
+    return s.includes('WEB') || s.includes('TELEVENDAS');
+  });
+  const vWT = webTelevendas.reduce((acc, c) => acc + safeNum(c.vendas), 0);
+  const aWT = webTelevendas.reduce((acc, c) => acc + safeNum(c.aprovados), 0);
+  const qWT = vWT > 0 ? Math.round((aWT / vWT) * 100) : 0;
+
+  // Cálculo para Consultores e Outros
+  const consultoresOutros = cards.filter(c => {
+    const s = (c.setor || '').toUpperCase();
+    return !s.includes('WEB') && !s.includes('TELEVENDAS');
+  });
+  const vCO = consultoresOutros.reduce((acc, c) => acc + safeNum(c.vendas), 0);
+  const aCO = consultoresOutros.reduce((acc, c) => acc + safeNum(c.aprovados), 0);
+  const qCO = vCO > 0 ? Math.round((aCO / vCO) * 100) : 0;
+
+  const renderBig = (t, v, s, p) => `
+    <div class="big-card">
+      <small>${t}</small>
+      <h2>${safeNum(v)}</h2>
+      <div>${s}</div>
+      <div class="progress-wrap" style="margin-top:10px">
+        <div class="progress">
+          <div class="bar ${colorClass(p)}" style="width:${Math.max(p, 5)}%">${p}%</div>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('topCardsVendas').innerHTML = 
+    renderBig('TOTAL VENDAS', g.vendas, `Mês: ${lastDataVendas.mes || ''}`, q) + 
+    renderBig('CONSULTORES / OUTROS', vCO, `Qualidade: ${qCO}%`, qCO) + 
+    renderBig('WEB / TELEVENDAS', vWT, `Qualidade: ${qWT}%`, qWT) + 
+    renderBig('PENDENTES', g.pendentes, 'Aguardando', 0);
+  
+  // DESTAQUES POR TOTAL DE VENDAS
   const sectors = ["VENDAS", "RECEPÇÃO", "REFILIAÇÃO"];
   let highlightsHtml = '';
   sectors.forEach(s => {
@@ -354,7 +365,6 @@ function renderAdimplencia() {
   document.getElementById('sectionsAdimplencia').innerHTML = `<div class="section-title">NOVOS REJEITADOS (NR)</div><div class="cards-grid">${s.nir.map(renderC).join('')}</div><div class="section-title">1 A 3 MESES EM ABERTO</div><div class="cards-grid">${s.um_a_tres.map(renderC).join('')}</div><div class="section-title">4 A 6 MESES EM ABERTO</div><div class="cards-grid">${s.quatro_a_seis.map(renderC).join('')}</div>`;
 }
 
-// RENDERIZADOR CASHBACK ORIGINAL RESTAURADO LITERALMENTE
 function renderCashback() {
   if(!lastDataCashback?.data) return;
   const data = lastDataCashback.data, geral = data.geral || {}, metricas = data.metricas || {}, parceiros = data.parceiros || [], colaboradores = data.colaboradores || [], colabMetricas = data.colaboradoresMetricas || {};
@@ -380,7 +390,6 @@ function renderCashback() {
   }
 }
 
-// DASHBOARD COCKPIT
 function renderDashboard() {
   const content = document.getElementById('dashboardContent');
   const totalVendas = safeNum(lastDataVendas?.geral?.vendas);
@@ -408,41 +417,13 @@ function renderDashboard() {
 function updateChart() {
   const ctx = document.getElementById('salesChart').getContext('2d');
   if(salesChart) salesChart.destroy();
-  
-  // DADOS BASEADOS NO TOTAL DE VENDAS (AJUSTADO)
   const labels = ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4'];
   const totalVendas = safeNum(lastDataVendas?.geral?.vendas);
-  const data = [
-    Math.round(totalVendas * 0.2),
-    Math.round(totalVendas * 0.3),
-    Math.round(totalVendas * 0.25),
-    Math.round(totalVendas * 0.25)
-  ];
-
+  const data = [Math.round(totalVendas * 0.2), Math.round(totalVendas * 0.3), Math.round(totalVendas * 0.25), Math.round(totalVendas * 0.25)];
   salesChart = new Chart(ctx, {
     type: 'line',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Total de Vendas',
-        data: data,
-        borderColor: '#FFD700',
-        backgroundColor: 'rgba(255, 215, 0, 0.1)',
-        fill: true,
-        tension: 0.4,
-        borderWidth: 3,
-        pointRadius: 4,
-        pointBackgroundColor: '#FFA500'
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: {
-        y: { beginAtZero: true, grid: { display: false } },
-        x: { grid: { display: false } }
-      }
-    }
+    data: { labels: labels, datasets: [{ label: 'Total de Vendas', data: data, borderColor: '#FFD700', backgroundColor: 'rgba(255, 215, 0, 0.1)', fill: true, tension: 0.4, borderWidth: 3, pointRadius: 4, pointBackgroundColor: '#FFA500' }] },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { display: false } }, x: { grid: { display: false } } } }
   });
 }
 
