@@ -28,6 +28,7 @@
             color: white;
             margin-bottom: 30px;
             animation: fadeInDown 0.8s ease;
+            position: relative;
         }
         
         .header h1 {
@@ -39,6 +40,40 @@
         .header p {
             font-size: 1.2em;
             opacity: 0.9;
+        }
+        
+        .print-button {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .print-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            background: #f8f9fa;
+        }
+        
+        .print-button:active {
+            transform: translateY(0);
+        }
+        
+        .print-button.downloading {
+            opacity: 0.6;
+            pointer-events: none;
         }
         
         .cards-container {
@@ -270,6 +305,46 @@
             }
         }
         
+        /* Estilos para impressão */
+        @media print {
+            body {
+                background: white;
+                padding: 10px;
+            }
+            
+            .print-button {
+                display: none;
+            }
+            
+            .header {
+                color: #2c3e50;
+                margin-bottom: 20px;
+            }
+            
+            .header h1 {
+                text-shadow: none;
+            }
+            
+            .card {
+                break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #ddd;
+                margin-bottom: 20px;
+            }
+            
+            .card:hover {
+                transform: none;
+            }
+            
+            .task-item:hover {
+                transform: none;
+            }
+            
+            .cards-container {
+                gap: 15px;
+            }
+        }
+        
         @media (max-width: 768px) {
             .cards-container {
                 grid-template-columns: 1fr;
@@ -278,12 +353,21 @@
             .header h1 {
                 font-size: 1.8em;
             }
+            
+            .print-button {
+                position: static;
+                margin: 15px auto 0;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
+            <button class="print-button" onclick="captureAndDownload()" id="printBtn">
+                <span>📸</span>
+                <span>Capturar Imagem</span>
+            </button>
             <h1>📋 Rotina de Responsabilidades dos Líderes</h1>
             <p>Gestão de tarefas e acompanhamento de equipe</p>
         </div>
@@ -325,11 +409,11 @@
                     </li>
                     <li class="task-item" onclick="toggleTask(this)">
                         <div class="task-checkbox"></div>
-                        <div class="task-text">Criar campanhas voltadas a vendas e refiliações</div>
+                        <div class="task-text">Alinhar com coordenador, criar campanhas voltadas a vendas e refiliações</div>
                     </li>
                     <li class="task-item" onclick="toggleTask(this)">
                         <div class="task-checkbox"></div>
-                        <div class="task-text">Alinhar com coordenador</div>
+                        <div class="task-text">Bater a semanal e passar para Willian realizar pagamento</div>
                     </li>
                     <li class="task-item" onclick="toggleTask(this)">
                         <div class="task-checkbox"></div>
@@ -363,6 +447,10 @@
                     <li class="task-item" onclick="toggleTask(this)">
                         <div class="task-checkbox"></div>
                         <div class="task-text">Participar das reuniões e passar informações para os demais</div>
+                    </li>
+                    <li class="task-item" onclick="toggleTask(this)">
+                        <div class="task-checkbox"></div>
+                        <div class="task-text">Acompanhar se a parcial é enviado no grupo principal</div>
                     </li>
                     <li class="task-item" onclick="toggleTask(this)">
                         <div class="task-checkbox"></div>
@@ -401,7 +489,7 @@
                         <div class="task-text">Hubspot na parte de leads de vendas</div>
                     </li>
                 </ul>
-                <span class="task-counter" id="counter-camilo">11 tarefas</span>
+                <span class="task-counter" id="counter-camilo">12 tarefas</span>
                 <div class="progress-bar">
                     <div class="progress-fill" id="progress-camilo" style="width: 0%"></div>
                 </div>
@@ -492,6 +580,7 @@
         </div>
     </div>
     
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dom-to-image/2.6.0/dom-to-image.min.js"></script>
     <script>
         function toggleTask(element) {
             element.classList.toggle('completed');
@@ -510,6 +599,53 @@
                 document.getElementById(`counter-${leader}`).textContent = 
                     `${completed.length}/${tasks.length} tarefas concluídas`;
             });
+        }
+        
+        async function captureAndDownload() {
+            const button = document.getElementById('printBtn');
+            button.classList.add('downloading');
+            button.innerHTML = '<span>⏳</span><span>Gerando...</span>';
+            
+            try {
+                // Oculta o botão
+                button.style.visibility = 'hidden';
+                
+                // Aguarda um momento
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Captura usando dom-to-image (muito melhor para gradientes)
+                const dataUrl = await domtoimage.toPng(document.body, {
+                    quality: 1,
+                    width: document.body.scrollWidth,
+                    height: document.body.scrollHeight,
+                    style: {
+                        margin: '0',
+                        padding: '0'
+                    }
+                });
+                
+                // Restaura o botão
+                button.style.visibility = 'visible';
+                
+                // Faz o download
+                const link = document.createElement('a');
+                const date = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
+                link.download = `rotina-lideres-${date}.png`;
+                link.href = dataUrl;
+                link.click();
+                
+                button.classList.remove('downloading');
+                button.innerHTML = '<span>📸</span><span>Capturar Imagem</span>';
+                
+            } catch (error) {
+                console.error('Erro ao capturar imagem:', error);
+                button.style.visibility = 'visible';
+                button.classList.remove('downloading');
+                button.innerHTML = '<span>❌</span><span>Erro ao capturar</span>';
+                setTimeout(() => {
+                    button.innerHTML = '<span>📸</span><span>Capturar Imagem</span>';
+                }, 2000);
+            }
         }
         
         updateProgress();
