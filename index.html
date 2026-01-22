@@ -3,220 +3,1413 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📊 Dashboard Empresarial - Cartão de Todos Ceilândia</title>
-    
-    <!-- Chart.js para gráficos -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <!-- Bootstrap CSS (opcional, mas ajuda no layout) -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Font Awesome ícones -->
+    <title>Dashboard V20.3 - Amor Saúde</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Nosso CSS -->
-    <link rel="stylesheet" href="style.css">
-    
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="https://img.icons8.com/color/96/000000/dashboard.png">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <style>
+        :root {
+            --primary: #7c3aed;
+            --primary-dark: #6d28d9;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #1f2937;
+            --light: #f9fafb;
+            --gray: #6b7280;
+            --gray-light: #e5e7eb;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 30px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo i {
+            font-size: 2.5rem;
+            background: white;
+            color: var(--primary);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-text h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .logo-text p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .btn-primary {
+            background: white;
+            color: var(--primary);
+        }
+
+        .btn-primary:hover {
+            background: var(--light);
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #0da271;
+            transform: translateY(-2px);
+        }
+
+        /* Dashboard Selector */
+        .dashboard-selector {
+            background: var(--light);
+            padding: 20px 40px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .dashboard-btn {
+            padding: 12px 24px;
+            border-radius: 10px;
+            background: white;
+            border: 2px solid transparent;
+            color: var(--gray);
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .dashboard-btn:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .dashboard-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Period Selector */
+        .period-selector {
+            padding: 20px 40px;
+            background: var(--light);
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .select-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .select-group label {
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 0.9rem;
+        }
+
+        select {
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 2px solid var(--gray-light);
+            background: white;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            color: var(--dark);
+            min-width: 200px;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Main Content */
+        .dashboard-content {
+            padding: 30px 40px;
+            min-height: 500px;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 60px;
+        }
+
+        .spinner {
+            border: 6px solid var(--gray-light);
+            border-top: 6px solid var(--primary);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Main Cards */
+        .main-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--gray-light);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--gray-light);
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+        }
+
+        .card-doc .card-icon { background: var(--primary); }
+        .card-app .card-icon { background: var(--secondary); }
+        .card-adim .card-icon { background: var(--success); }
+        .card-refut .card-icon { background: #ec4899; }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .metric-item {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .metric-percent {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: inline-block;
+            width: fit-content;
+        }
+
+        .percent-high { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .percent-medium { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .percent-low { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+
+        /* Consultant Grid */
+        .consultant-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .consultant-card {
+            background: white;
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+            border: 1px solid var(--gray-light);
+            transition: all 0.3s ease;
+        }
+
+        .consultant-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .consultant-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .consultant-name {
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 1.1rem;
+        }
+
+        .consultant-sector {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: var(--gray-light);
+            color: var(--gray);
+        }
+
+        .sector-vendas { background: rgba(124, 58, 237, 0.1); color: var(--primary); }
+        .sector-recepcao { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .sector-refiliacao { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .sector-web { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+
+        /* Table */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .data-table th {
+            background: var(--light);
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--dark);
+            border-bottom: 2px solid var(--gray-light);
+        }
+
+        .data-table td {
+            padding: 16px;
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .data-table tr:hover {
+            background: rgba(124, 58, 237, 0.03);
+        }
+
+        /* Error */
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 30px 0;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 20px 40px;
+            background: var(--light);
+            text-align: center;
+            color: var(--gray);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--gray-light);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                padding: 20px;
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .logo {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .dashboard-selector, .period-selector, .dashboard-content {
+                padding: 20px;
+            }
+            
+            .main-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .metric-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .consultant-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            select {
+                min-width: 100%;
+            }
+        }
+
+        /* Print Styles */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .container {
+                box-shadow: none;
+                border-radius: 0;
+            }
+            
+            .btn, .dashboard-selector, .period-selector {
+                display: none;
+            }
+        }
+    </style>
 </head>
 <body>
-    <!-- Barra de Navegação -->
-    <nav class="navbar navbar-dark navbar-expand-lg">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">
-                <i class="fas fa-chart-line me-2"></i>
-                <strong>DASHBOARD CDT CEILÂNDIA</strong>
-            </a>
-            <div class="navbar-text">
-                <span id="data-atual"></span>
-                <span class="badge bg-success ms-2" id="status-api">● ONLINE</span>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Container Principal -->
-    <div class="container-fluid mt-4">
-        
-        <!-- Filtros -->
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <div class="card filter-card">
-                    <div class="card-body">
-                        <div class="row align-items-center">
-                            <div class="col-md-3">
-                                <label class="form-label"><i class="fas fa-calendar-alt me-2"></i>Mês</label>
-                                <select class="form-select" id="mesSelect">
-                                    <option value="1">Janeiro</option>
-                                    <option value="2">Fevereiro</option>
-                                    <option value="3">Março</option>
-                                    <option value="4">Abril</option>
-                                    <option value="5">Maio</option>
-                                    <option value="6">Junho</option>
-                                    <option value="7">Julho</option>
-                                    <option value="8">Agosto</option>
-                                    <option value="9">Setembro</option>
-                                    <option value="10">Outubro</option>
-                                    <option value="11">Novembro</option>
-                                    <option value="12">Dezembro</option>
-                                </select>
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-label"><i class="fas fa-calendar me-2"></i>Ano</label>
-                                <select class="form-select" id="anoSelect">
-                                    <!-- Será preenchido via JavaScript -->
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label"><i class="fas fa-chart-bar me-2"></i>Dashboard</label>
-                                <select class="form-select" id="dashboardSelect">
-                                    <option value="documentacao">📁 Documentação</option>
-                                    <option value="app">📱 App</option>
-                                    <option value="adimplencia">💳 Adimplência</option>
-                                    <option value="recorrencia">📈 Recorrência</option>
-                                </select>
-                            </div>
-                            <div class="col-md-2 d-flex align-items-end">
-                                <button class="btn btn-primary w-100" onclick="carregarDados()">
-                                    <i class="fas fa-sync-alt me-2"></i>Atualizar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-chart-line"></i>
+                <div class="logo-text">
+                    <h1>Dashboard V20.3 - Amor Saúde</h1>
+                    <p>Monitoramento completo de desempenho - 5 dashboards integrados</p>
                 </div>
+            </div>
+            <div class="controls">
+                <button class="btn btn-primary" id="downloadBtn">
+                    <i class="fas fa-download"></i> Exportar Página
+                </button>
+                <button class="btn btn-success" id="refreshBtn">
+                    <i class="fas fa-sync-alt"></i> Atualizar Dados
+                </button>
             </div>
         </div>
 
-        <!-- KPIs Principais -->
-        <div class="row mb-4" id="kpi-section">
-            <!-- KPIs serão carregados via JavaScript -->
+        <!-- Dashboard Selector -->
+        <div class="dashboard-selector">
+            <button class="dashboard-btn active" data-dashboard="documentacao">
+                <i class="fas fa-folder"></i> Vendas
+            </button>
+            <button class="dashboard-btn" data-dashboard="app">
+                <i class="fas fa-mobile-alt"></i> App
+            </button>
+            <button class="dashboard-btn" data-dashboard="adimplencia">
+                <i class="fas fa-credit-card"></i> Adimplência
+            </button>
+            <button class="dashboard-btn" data-dashboard="recorrencia">
+                <i class="fas fa-redo"></i> Recorrência
+            </button>
+            <button class="dashboard-btn" data-dashboard="refuturiza">
+                <i class="fas fa-phone"></i> Refuturiza
+            </button>
         </div>
 
-        <!-- Seção de Gráficos -->
-        <div class="row mb-4">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header">
-                        <i class="fas fa-chart-bar me-2"></i>
-                        <span id="grafico-titulo">Gráfico de Desempenho</span>
-                    </div>
-                    <div class="card-body">
-                        <canvas id="mainChart"></canvas>
-                    </div>
-                </div>
+        <!-- Period Selector -->
+        <div class="period-selector">
+            <div class="select-group">
+                <label for="monthSelect"><i class="far fa-calendar-alt"></i> Mês</label>
+                <select id="monthSelect">
+                    <option value="1">Janeiro</option>
+                    <option value="2">Fevereiro</option>
+                    <option value="3">Março</option>
+                    <option value="4">Abril</option>
+                    <option value="5">Maio</option>
+                    <option value="6">Junho</option>
+                    <option value="7">Julho</option>
+                    <option value="8">Agosto</option>
+                    <option value="9">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                </select>
             </div>
-            <div class="col-md-4">
-                <div class="card">
-                    <div class="card-header">
-                        <i class="fas fa-chart-pie me-2"></i>
-                        Distribuição
-                    </div>
-                    <div class="card-body">
-                        <canvas id="pieChart"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tabela de Dados Detalhados -->
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header">
-                        <i class="fas fa-table me-2"></i>
-                        <span id="tabela-titulo">Detalhamento por Consultor</span>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover" id="detalhes-table">
-                                <thead>
-                                    <tr>
-                                        <!-- Cabeçalho será preenchido via JavaScript -->
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Dados serão preenchidos via JavaScript -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
+            <div class="select-group">
+                <label for="yearSelect"><i class="far fa-calendar"></i> Ano</label>
+                <select id="yearSelect">
+                    <!-- Years will be populated by JavaScript -->
+                </select>
             </div>
         </div>
 
-        <!-- Informações da API -->
-        <div class="row mt-4">
-            <div class="col-md-12">
-                <div class="card api-info">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6><i class="fas fa-info-circle me-2"></i>Informações da API</h6>
-                                <p class="mb-1"><small>URL Base: <code id="api-url">Carregando...</code></small></p>
-                                <p class="mb-1"><small>Última Atualização: <span id="ultima-atualizacao">-</span></small></p>
-                            </div>
-                            <div class="col-md-6 text-end">
-                                <button class="btn btn-sm btn-outline-secondary" onclick="testarAPI()">
-                                    <i class="fas fa-bolt me-1"></i>Testar Conexão
-                                </button>
-                                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="exportarParaExcel()">
-                                    <i class="fas fa-file-excel me-1"></i>Exportar Excel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <!-- Dashboard Content -->
+        <div class="dashboard-content" id="dashboardContent">
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Carregando dados do dashboard...</p>
             </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Sistema Dashboard V20.3 | API Integrada com Google Apps Script | Última atualização: <span id="lastUpdate"></span></p>
         </div>
     </div>
 
-    <!-- Modal de Carregamento -->
-    <div class="modal fade" id="loadingModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-transparent border-0">
-                <div class="modal-body text-center">
-                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
-                        <span class="visually-hidden">Carregando...</span>
-                    </div>
-                    <p class="text-white mt-3" id="loading-text">Carregando dados...</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal de Erro -->
-    <div class="modal fade" id="errorModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Erro</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p id="error-message">Ocorreu um erro ao carregar os dados.</p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                    <button type="button" class="btn btn-primary" onclick="carregarDados()">Tentar Novamente</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Nosso JavaScript -->
-    <script src="script.js"></script>
-    
     <script>
-        // Inicializar quando a página carregar
+        // Configuration
+        const API_URL = 'https://script.google.com/macros/s/AKfycbwFHD84L1y3wcG2Bt-_lKoBJSh85amDB-RPdekYSio5TenSfJLmZNPRRafK8zdvW30M4Q/exec';
+        
+        // State
+        let currentDashboard = 'documentacao';
+        let currentMonth = new Date().getMonth() + 1;
+        let currentYear = new Date().getFullYear();
+        let dashboardData = {};
+
+        // DOM Elements
+        const dashboardBtns = document.querySelectorAll('.dashboard-btn');
+        const monthSelect = document.getElementById('monthSelect');
+        const yearSelect = document.getElementById('yearSelect');
+        const dashboardContent = document.getElementById('dashboardContent');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const loadingEl = document.getElementById('loading');
+        const lastUpdateEl = document.getElementById('lastUpdate');
+
+        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            inicializarDashboard();
+            initializeYearSelect();
+            setCurrentPeriod();
+            loadDashboard();
+            setupEventListeners();
+            updateLastUpdateTime();
         });
+
+        function initializeYearSelect() {
+            const currentYear = new Date().getFullYear();
+            for (let year = currentYear - 2; year <= currentYear + 2; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                yearSelect.appendChild(option);
+            }
+            yearSelect.value = currentYear;
+        }
+
+        function setCurrentPeriod() {
+            monthSelect.value = currentMonth;
+            yearSelect.value = currentYear;
+        }
+
+        function setupEventListeners() {
+            // Dashboard buttons
+            dashboardBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    dashboardBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentDashboard = this.dataset.dashboard;
+                    loadDashboard();
+                });
+            });
+
+            // Period selectors
+            monthSelect.addEventListener('change', function() {
+                currentMonth = parseInt(this.value);
+                loadDashboard();
+            });
+
+            yearSelect.addEventListener('change', function() {
+                currentYear = parseInt(this.value);
+                loadDashboard();
+            });
+
+            // Refresh button
+            refreshBtn.addEventListener('click', loadDashboard);
+
+            // Download button
+            downloadBtn.addEventListener('click', exportPage);
+        }
+
+        function updateLastUpdateTime() {
+            const now = new Date();
+            lastUpdateEl.textContent = now.toLocaleString('pt-BR');
+        }
+
+        async function loadDashboard() {
+            showLoading();
+            updateLastUpdateTime();
+            
+            try {
+                let url = `${API_URL}?endpoint=${currentDashboard}`;
+                
+                // Add month/year params for dashboards that need them
+                if (currentDashboard !== 'recorrencia') {
+                    url += `&mes=${currentMonth}&ano=${currentYear}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    dashboardData = data.data;
+                    renderDashboard();
+                } else {
+                    showError(data.error || 'Erro ao carregar dados');
+                }
+            } catch (error) {
+                showError('Erro de conexão: ' + error.message);
+            }
+        }
+
+        function renderDashboard() {
+            hideLoading();
+            
+            switch(currentDashboard) {
+                case 'documentacao':
+                    renderDocumentacaoDashboard();
+                    break;
+                case 'app':
+                    renderAppDashboard();
+                    break;
+                case 'adimplencia':
+                    renderAdimplenciaDashboard();
+                    break;
+                case 'recorrencia':
+                    renderRecorrenciaDashboard();
+                    break;
+                case 'refuturiza':
+                    renderRefuturizaDashboard();
+                    break;
+            }
+        }
+
+        function renderDocumentacaoDashboard() {
+            const { geral, vendasLoja, vendasWeb, consultores, mes, ano } = dashboardData;
+            
+            // Calculate percentages
+            const percentGeral = geral.total > 0 ? Math.round((geral.aprovados / geral.total) * 100) : 0;
+            const percentLoja = vendasLoja.total > 0 ? Math.round((vendasLoja.aprovados / vendasLoja.total) * 100) : 0;
+            const percentWeb = vendasWeb.total > 0 ? Math.round((vendasWeb.aprovados / vendasWeb.total) * 100) : 0;
+            
+            const html = `
+                <h2 style="margin-bottom: 25px; color: var(--dark); font-size: 1.5rem;">
+                    <i class="fas fa-folder" style="color: var(--primary); margin-right: 10px;"></i>
+                    Dashboard de Vendas - ${mes} ${ano}
+                </h2>
+                
+                <!-- Main Cards -->
+                <div class="main-cards">
+                    <div class="card card-doc">
+                        <div class="card-header">
+                            <div class="card-title">Total de Vendas</div>
+                            <div class="card-icon">
+                                <i class="fas fa-chart-bar"></i>
+                            </div>
+                        </div>
+                        <div class="metric-grid">
+                            <div class="metric-item">
+                                <div class="metric-label">Total Vendas</div>
+                                <div class="metric-value">${geral.total}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Aprovados</div>
+                                <div class="metric-value">${geral.aprovados}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Pendências</div>
+                                <div class="metric-value">${geral.pendencias}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">% Aprovados</div>
+                                <div class="metric-percent ${getPercentClass(percentGeral)}">${percentGeral}%</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card card-doc">
+                        <div class="card-header">
+                            <div class="card-title">Vendas Loja</div>
+                            <div class="card-icon">
+                                <i class="fas fa-store"></i>
+                            </div>
+                        </div>
+                        <div class="metric-grid">
+                            <div class="metric-item">
+                                <div class="metric-label">Total Vendas</div>
+                                <div class="metric-value">${vendasLoja.total}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Aprovados</div>
+                                <div class="metric-value">${vendasLoja.aprovados}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Pendências</div>
+                                <div class="metric-value">${vendasLoja.pendencias}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">% Aprovados</div>
+                                <div class="metric-percent ${getPercentClass(percentLoja)}">${percentLoja}%</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card card-doc">
+                        <div class="card-header">
+                            <div class="card-title">Vendas Web/Tele</div>
+                            <div class="card-icon">
+                                <i class="fas fa-globe"></i>
+                            </div>
+                        </div>
+                        <div class="metric-grid">
+                            <div class="metric-item">
+                                <div class="metric-label">Total Vendas</div>
+                                <div class="metric-value">${vendasWeb.total}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Aprovados</div>
+                                <div class="metric-value">${vendasWeb.aprovados}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Pendências</div>
+                                <div class="metric-value">${vendasWeb.pendencias}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">% Aprovados</div>
+                                <div class="metric-percent ${getPercentClass(percentWeb)}">${percentWeb}%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Detailed Table -->
+                <h3 style="margin: 30px 0 20px; color: var(--dark); font-size: 1.2rem;">
+                    <i class="fas fa-users" style="color: var(--primary); margin-right: 10px;"></i>
+                    Desempenho por Consultor
+                </h3>
+                
+                <div class="consultant-grid">
+                    ${consultores.map(consultor => {
+                        const percent = consultor.total > 0 ? Math.round((consultor.aprovados / consultor.total) * 100) : 0;
+                        const sectorClass = getSectorClass(consultor.setor);
+                        
+                        return `
+                        <div class="consultant-card">
+                            <div class="consultant-header">
+                                <div class="consultant-name">${consultor.nome}</div>
+                                <div class="consultant-sector ${sectorClass}">${consultor.setor}</div>
+                            </div>
+                            <div class="metric-grid">
+                                <div class="metric-item">
+                                    <div class="metric-label">Total</div>
+                                    <div class="metric-value">${consultor.total}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Aprovados</div>
+                                    <div class="metric-value" style="color: var(--success);">${consultor.aprovados}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Pendências</div>
+                                    <div class="metric-value" style="color: var(--danger);">${consultor.pendencias}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">% Aprovados</div>
+                                    <div class="metric-percent ${getPercentClass(percent)}">${percent}%</div>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+            
+            dashboardContent.innerHTML = html;
+        }
+
+        function renderAppDashboard() {
+            const { geral, appLoja, appWeb, consultores, consultorasRetencao, mes, ano } = dashboardData;
+            
+            // Calculate percentages
+            const percentGeral = geral.total > 0 ? Math.round((geral.sim / geral.total) * 100) : 0;
+            const percentLoja = appLoja.total > 0 ? Math.round((appLoja.sim / appLoja.total) * 100) : 0;
+            const percentWeb = appWeb.total > 0 ? Math.round((appWeb.sim / appWeb.total) * 100) : 0;
+            
+            const html = `
+                <h2 style="margin-bottom: 25px; color: var(--dark); font-size: 1.5rem;">
+                    <i class="fas fa-mobile-alt" style="color: var(--secondary); margin-right: 10px;"></i>
+                    Dashboard App - ${mes} ${ano}
+                </h2>
+                
+                <!-- Main Cards -->
+                <div class="main-cards">
+                    <div class="card card-app">
+                        <div class="card-header">
+                            <div class="card-title">App - Total Geral</div>
+                            <div class="card-icon">
+                                <i class="fas fa-chart-pie"></i>
+                            </div>
+                        </div>
+                        <div class="metric-grid">
+                            <div class="metric-item">
+                                <div class="metric-label">Total Clientes</div>
+                                <div class="metric-value">${geral.total}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Com App (SIM)</div>
+                                <div class="metric-value" style="color: var(--success);">${geral.sim}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Sem App (NÃO)</div>
+                                <div class="metric-value" style="color: var(--danger);">${geral.nao}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">% Com App</div>
+                                <div class="metric-percent ${getPercentClass(percentGeral)}">${percentGeral}%</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card card-app">
+                        <div class="card-header">
+                            <div class="card-title">App - Loja</div>
+                            <div class="card-icon">
+                                <i class="fas fa-store"></i>
+                            </div>
+                        </div>
+                        <div class="metric-grid">
+                            <div class="metric-item">
+                                <div class="metric-label">Total Clientes</div>
+                                <div class="metric-value">${appLoja.total}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Com App (SIM)</div>
+                                <div class="metric-value" style="color: var(--success);">${appLoja.sim}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Sem App (NÃO)</div>
+                                <div class="metric-value" style="color: var(--danger);">${appLoja.nao}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">% Com App</div>
+                                <div class="metric-percent ${getPercentClass(percentLoja)}">${percentLoja}%</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card card-app">
+                        <div class="card-header">
+                            <div class="card-title">App - Web/Tele</div>
+                            <div class="card-icon">
+                                <i class="fas fa-globe"></i>
+                            </div>
+                        </div>
+                        <div class="metric-grid">
+                            <div class="metric-item">
+                                <div class="metric-label">Total Clientes</div>
+                                <div class="metric-value">${appWeb.total}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Com App (SIM)</div>
+                                <div class="metric-value" style="color: var(--success);">${appWeb.sim}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">Sem App (NÃO)</div>
+                                <div class="metric-value" style="color: var(--danger);">${appWeb.nao}</div>
+                            </div>
+                            <div class="metric-item">
+                                <div class="metric-label">% Com App</div>
+                                <div class="metric-percent ${getPercentClass(percentWeb)}">${percentWeb}%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Retention Consultants -->
+                ${consultorasRetencao && consultorasRetencao.length > 0 ? `
+                <h3 style="margin: 40px 0 20px; color: var(--dark); font-size: 1.2rem;">
+                    <i class="fas fa-crown" style="color: #f59e0b; margin-right: 10px;"></i>
+                    Consultoras de Retenção
+                </h3>
+                
+                <div class="consultant-grid" style="margin-bottom: 30px;">
+                    ${consultorasRetencao.map(consultora => {
+                        const percent = consultora.total > 0 ? Math.round((consultora.sim / consultora.total) * 100) : 0;
+                        
+                        return `
+                        <div class="consultant-card" style="border-left: 4px solid #f59e0b;">
+                            <div class="consultant-header">
+                                <div class="consultant-name">${consultora.nome} (RETENÇÃO)</div>
+                                <div class="consultant-sector sector-vendas">${consultora.setor}</div>
+                            </div>
+                            <div class="metric-grid">
+                                <div class="metric-item">
+                                    <div class="metric-label">Total Clientes</div>
+                                    <div class="metric-value">${consultora.total}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Com App</div>
+                                    <div class="metric-value" style="color: var(--success);">${consultora.sim}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Sem App</div>
+                                    <div class="metric-value" style="color: var(--danger);">${consultora.nao}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">% Com App</div>
+                                    <div class="metric-percent ${getPercentClass(percent)}">${percent}%</div>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+                ` : ''}
+                
+                <!-- Other Consultants -->
+                <h3 style="margin: 30px 0 20px; color: var(--dark); font-size: 1.2rem;">
+                    <i class="fas fa-users" style="color: var(--primary); margin-right: 10px;"></i>
+                    Demais Consultores
+                </h3>
+                
+                <div class="consultant-grid">
+                    ${consultores.filter(c => !c.origem || c.origem !== 'retencao').map(consultor => {
+                        const percent = consultor.total > 0 ? Math.round((consultor.sim / consultor.total) * 100) : 0;
+                        const sectorClass = getSectorClass(consultor.setor);
+                        
+                        return `
+                        <div class="consultant-card">
+                            <div class="consultant-header">
+                                <div class="consultant-name">${consultor.nome}</div>
+                                <div class="consultant-sector ${sectorClass}">${consultor.setor}</div>
+                            </div>
+                            <div class="metric-grid">
+                                <div class="metric-item">
+                                    <div class="metric-label">Total</div>
+                                    <div class="metric-value">${consultor.total}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Com App</div>
+                                    <div class="metric-value" style="color: var(--success);">${consultor.sim}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Sem App</div>
+                                    <div class="metric-value" style="color: var(--danger);">${consultor.nao}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">% Com App</div>
+                                    <div class="metric-percent ${getPercentClass(percent)}">${percent}%</div>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+            
+            dashboardContent.innerHTML = html;
+        }
+
+        function renderAdimplenciaDashboard() {
+            const { geral, consultores, mes, ano } = dashboardData;
+            
+            const html = `
+                <h2 style="margin-bottom: 25px; color: var(--dark); font-size: 1.5rem;">
+                    <i class="fas fa-credit-card" style="color: var(--success); margin-right: 10px;"></i>
+                    Dashboard Adimplência - ${mes} ${ano}
+                </h2>
+                
+                <!-- Main Card -->
+                <div class="card card-adim" style="max-width: 500px; margin: 0 auto 40px;">
+                    <div class="card-header">
+                        <div class="card-title">Adimplência - Total da Loja</div>
+                        <div class="card-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                    </div>
+                    <div class="metric-grid">
+                        <div class="metric-item">
+                            <div class="metric-label">Total Trocas</div>
+                            <div class="metric-value">${geral.totalTrocas}</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Mens. OK</div>
+                            <div class="metric-value" style="color: var(--success);">${geral.mensOk}</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Mens. Aberto</div>
+                            <div class="metric-value" style="color: var(--warning);">${geral.mensAberto}</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Mens. Atraso</div>
+                            <div class="metric-value" style="color: var(--danger);">${geral.mensAtraso}</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Aprovados</div>
+                            <div class="metric-value" style="color: var(--success);">${geral.aprovados}</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Pendentes</div>
+                            <div class="metric-value" style="color: var(--danger);">${geral.pendentes}</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">% Aprovados</div>
+                            <div class="metric-percent ${getPercentClass(geral.percentualAprovado)}">${geral.percentualAprovado}%</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Consultant Table -->
+                <h3 style="margin: 30px 0 20px; color: var(--dark); font-size: 1.2rem;">
+                    <i class="fas fa-user-tie" style="color: var(--primary); margin-right: 10px;"></i>
+                    Desempenho por Consultor
+                </h3>
+                
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Consultor</th>
+                            <th>Total Trocas</th>
+                            <th>Mens. OK</th>
+                            <th>Mens. Aberto</th>
+                            <th>Mens. Atraso</th>
+                            <th>Aprovados</th>
+                            <th>Pendentes</th>
+                            <th>% Aprovados</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${consultores.map(consultor => {
+                            return `
+                            <tr>
+                                <td><strong>${consultor.nome}</strong></td>
+                                <td>${consultor.totalTrocas}</td>
+                                <td style="color: var(--success);">${consultor.mensOk}</td>
+                                <td style="color: var(--warning);">${consultor.mensAberto}</td>
+                                <td style="color: var(--danger);">${consultor.mensAtraso}</td>
+                                <td style="color: var(--success);">${consultor.aprovados}</td>
+                                <td style="color: var(--danger);">${consultor.pendentes}</td>
+                                <td><span class="metric-percent ${getPercentClass(consultor.percentualAprovado)}">${consultor.percentualAprovado}%</span></td>
+                            </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+            
+            dashboardContent.innerHTML = html;
+        }
+
+        function renderRecorrenciaDashboard() {
+            const { retencao, refiliacao, periodo } = dashboardData;
+            
+            const html = `
+                <h2 style="margin-bottom: 25px; color: var(--dark); font-size: 1.5rem;">
+                    <i class="fas fa-redo" style="color: var(--warning); margin-right: 10px;"></i>
+                    Dashboard Recorrência - ${periodo.atual}
+                </h2>
+                
+                <div style="background: #fef3c7; padding: 15px; border-radius: 10px; margin-bottom: 30px;">
+                    <p style="margin: 0; color: #92400e; font-weight: 500;">
+                        <i class="fas fa-info-circle"></i> Período atual: ${periodo.atual} | Histórico: ${periodo.historico.join(', ')}
+                    </p>
+                </div>
+                
+                <!-- Retention Section -->
+                <h3 style="margin: 30px 0 20px; color: var(--dark); font-size: 1.2rem; border-bottom: 2px solid var(--primary); padding-bottom: 10px;">
+                    <i class="fas fa-crown" style="color: var(--primary); margin-right: 10px;"></i>
+                    Retenção
+                </h3>
+                
+                <div class="consultant-grid" style="margin-bottom: 40px;">
+                    ${Object.keys(retencao).map(key => {
+                        const c = retencao[key];
+                        const percentAtual = c.atual.totalRetidosFinal > 0 ? Math.round((c.atual.retençõesOK / c.atual.totalRetidosFinal) * 100) : 0;
+                        const percentTotal = c.total3Meses.totalRetidosFinal > 0 ? Math.round((c.total3Meses.totalOK / c.total3Meses.totalRetidosFinal) * 100) : 0;
+                        
+                        return `
+                        <div class="consultant-card">
+                            <div class="consultant-header">
+                                <div class="consultant-name">${key} (RETENÇÃO)</div>
+                                <div class="consultant-sector sector-vendas">RETENÇÃO</div>
+                            </div>
+                            
+                            <h4 style="margin: 15px 0 10px; color: var(--gray); font-size: 0.9rem;">
+                                <i class="far fa-calendar-check"></i> Mês Atual (${periodo.atual})
+                            </h4>
+                            <div class="metric-grid">
+                                <div class="metric-item">
+                                    <div class="metric-label">Total Retido</div>
+                                    <div class="metric-value">${c.atual.totalRetido}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Retenções OK</div>
+                                    <div class="metric-value" style="color: var(--success);">${c.atual.retençõesOK}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">% OK</div>
+                                    <div class="metric-percent ${getPercentClass(percentAtual)}">${percentAtual}%</div>
+                                </div>
+                            </div>
+                            
+                            <h4 style="margin: 15px 0 10px; color: var(--gray); font-size: 0.9rem;">
+                                <i class="fas fa-chart-line"></i> Total 3 Meses
+                            </h4>
+                            <div class="metric-grid">
+                                <div class="metric-item">
+                                    <div class="metric-label">Total Retido</div>
+                                    <div class="metric-value">${c.total3Meses.totalRetido}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Retenções OK</div>
+                                    <div class="metric-value" style="color: var(--success);">${c.total3Meses.totalOK || 0}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">% OK</div>
+                                    <div class="metric-percent ${getPercentClass(percentTotal)}">${percentTotal}%</div>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+                
+                <!-- Refiliation Section -->
+                <h3 style="margin: 30px 0 20px; color: var(--dark); font-size: 1.2rem; border-bottom: 2px solid var(--warning); padding-bottom: 10px;">
+                    <i class="fas fa-user-plus" style="color: var(--warning); margin-right: 10px;"></i>
+                    Refiliação
+                </h3>
+                
+                <div class="consultant-grid">
+                    ${Object.keys(refiliacao).map(key => {
+                        const c = refiliacao[key];
+                        const percentTotal = c.total3Meses.totalRetidosFinal > 0 ? Math.round((c.total3Meses.totalOK / c.total3Meses.totalRetidosFinal) * 100) : 0;
+                        
+                        return `
+                        <div class="consultant-card">
+                            <div class="consultant-header">
+                                <div class="consultant-name">${key} (REFILIAÇÃO)</div>
+                                <div class="consultant-sector sector-refiliacao">REFILIAÇÃO</div>
+                            </div>
+                            
+                            <h4 style="margin: 15px 0 10px; color: var(--gray); font-size: 0.9rem;">
+                                <i class="fas fa-chart-line"></i> Total 3 Meses
+                            </h4>
+                            <div class="metric-grid">
+                                <div class="metric-item">
+                                    <div class="metric-label">Total Refiliados</div>
+                                    <div class="metric-value">${c.total3Meses.totalRetido}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Refiliações OK</div>
+                                    <div class="metric-value" style="color: var(--success);">${c.total3Meses.totalOK || 0}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">% OK</div>
+                                    <div class="metric-percent ${getPercentClass(percentTotal)}">${percentTotal}%</div>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+            
+            dashboardContent.innerHTML = html;
+        }
+
+        function renderRefuturizaDashboard() {
+            const { geral, consultores, mes, ano } = dashboardData;
+            
+            const percentGeral = geral.total > 0 ? Math.round((geral.comLigacao / geral.total) * 100) : 0;
+            
+            // Calculate statistics
+            const bestPercent = consultores.length > 0 ? 
+                Math.max(...consultores.map(c => c.total > 0 ? Math.round((c.comLigacao / c.total) * 100) : 0)) : 0;
+            
+            const worstPercent = consultores.length > 0 ? 
+                Math.min(...consultores.filter(c => c.total > 0).map(c => Math.round((c.comLigacao / c.total) * 100))) : 0;
+            
+            const avgPerConsultant = consultores.length > 0 ? Math.round(geral.total / consultores.length) : 0;
+            
+            const html = `
+                <h2 style="margin-bottom: 25px; color: var(--dark); font-size: 1.5rem;">
+                    <i class="fas fa-phone" style="color: #ec4899; margin-right: 10px;"></i>
+                    Dashboard Refuturiza - ${mes} ${ano}
+                </h2>
+                
+                <!-- Main Card -->
+                <div class="card card-refut" style="max-width: 500px; margin: 0 auto 40px;">
+                    <div class="card-header">
+                        <div class="card-title">Refuturiza - Total da Loja</div>
+                        <div class="card-icon">
+                            <i class="fas fa-phone-volume"></i>
+                        </div>
+                    </div>
+                    <div class="metric-grid">
+                        <div class="metric-item">
+                            <div class="metric-label">Total Vendas</div>
+                            <div class="metric-value">${geral.total}</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Com Ligação</div>
+                            <div class="metric-value" style="color: var(--success);">${geral.comLigacao}</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Sem Ligação</div>
+                            <div class="metric-value" style="color: var(--danger);">${geral.semLigacao}</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Cancelados</div>
+                            <div class="metric-value" style="color: var(--gray);">${geral.cancelado}</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">% Com Ligação</div>
+                            <div class="metric-percent ${getPercentClass(percentGeral)}">${percentGeral}%</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Consultant Cards -->
+                ${consultores.length > 0 ? `
+                <h3 style="margin: 40px 0 20px; color: var(--dark); font-size: 1.2rem;">
+                    <i class="fas fa-users" style="color: #ec4899; margin-right: 10px;"></i>
+                    Consultores com Vendas (${consultores.length})
+                </h3>
+                
+                <div class="consultant-grid">
+                    ${consultores.map(consultor => {
+                        const percent = consultor.total > 0 ? Math.round((consultor.comLigacao / consultor.total) * 100) : 0;
+                        
+                        return `
+                        <div class="consultant-card">
+                            <div class="consultant-header">
+                                <div class="consultant-name">${consultor.nome}</div>
+                                <div class="consultant-sector" style="background: rgba(236, 72, 153, 0.1); color: #ec4899;">VENDAS</div>
+                            </div>
+                            <div class="metric-grid">
+                                <div class="metric-item">
+                                    <div class="metric-label">Total Vendas</div>
+                                    <div class="metric-value">${consultor.total}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Com Ligação</div>
+                                    <div class="metric-value" style="color: var(--success);">${consultor.comLigacao}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Sem Ligação</div>
+                                    <div class="metric-value" style="color: var(--danger);">${consultor.semLigacao}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">Cancelados</div>
+                                    <div class="metric-value" style="color: var(--gray);">${consultor.cancelado}</div>
+                                </div>
+                                <div class="metric-item">
+                                    <div class="metric-label">% Com Ligação</div>
+                                    <div class="metric-percent ${getPercentClass(percent)}">${percent}%</div>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+                
+                <!-- Summary -->
+                <div class="card" style="margin-top: 40px; background: linear-gradient(90deg, #ec4899 0%, #8b5cf6 100%); color: white;">
+                    <div class="card-header" style="border-bottom-color: rgba(255,255,255,0.2);">
+                        <div class="card-title" style="color: white;">📊 Resumo Final</div>
+                        <div class="card-icon" style="background: rgba(255,255,255,0.2);">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                    </div>
+                    <div class="metric-grid">
+                        <div class="metric-item">
+                            <div class="metric-label" style="color: rgba(255,255,255,0.8);">Total Consultores</div>
+                            <div class="metric-value" style="color: white;">${consultores.length}</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label" style="color: rgba(255,255,255,0.8);">Total Vendas</div>
+                            <div class="metric-value" style="color: white;">${geral.total}</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label" style="color: rgba(255,255,255,0.8);">Média por Consultor</div>
+                            <div class="metric-value" style="color: white;">${avgPerConsultant}</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label" style="color: rgba(255,255,255,0.8);">Melhor %</div>
+                            <div class="metric-percent" style="background: rgba(255,255,255,0.2); color: white;">${bestPercent}%</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label" style="color: rgba(255,255,255,0.8);">Pior %</div>
+                            <div class="metric-percent" style="background: rgba(255,255,255,0.2); color: white;">${worstPercent}%</div>
+                        </div>
+                    </div>
+                </div>
+                ` : `
+                <div class="error-message" style="text-align: center; padding: 40px;">
+                    <i class="fas fa-info-circle" style="font-size: 3rem; margin-bottom: 20px; color: var(--gray);"></i>
+                    <h3 style="margin-bottom: 10px; color: var(--gray);">Nenhum consultor com vendas neste período</h3>
+                    <p style="color: var(--gray);">Não foram encontrados dados de vendas para ${mes} ${ano}.</p>
+                </div>
+                `}
+            `;
+            
+            dashboardContent.innerHTML = html;
+        }
+
+        // Helper Functions
+        function getPercentClass(percent) {
+            if (percent >= 90) return 'percent-high';
+            if (percent >= 80) return 'percent-medium';
+            return 'percent-low';
+        }
+
+        function getSectorClass(sector) {
+            switch(sector?.toUpperCase()) {
+                case 'VENDAS': return 'sector-vendas';
+                case 'RECEPCAO': return 'sector-recepcao';
+                case 'REFILIACAO': return 'sector-refiliacao';
+                case 'WEB SITE': return 'sector-web';
+                default: return '';
+            }
+        }
+
+        function showLoading() {
+            loadingEl.style.display = 'block';
+            dashboardContent.innerHTML = '';
+            dashboardContent.appendChild(loadingEl);
+        }
+
+        function hideLoading() {
+            loadingEl.style.display = 'none';
+        }
+
+        function showError(message) {
+            hideLoading();
+            dashboardContent.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 15px;"></i>
+                    <h3 style="margin-bottom: 10px;">Erro ao carregar dados</h3>
+                    <p>${message}</p>
+                    <button class="btn btn-primary" onclick="loadDashboard()" style="margin-top: 15px;">
+                        <i class="fas fa-redo"></i> Tentar Novamente
+                    </button>
+                </div>
+            `;
+        }
+
+        function exportPage() {
+            // Create a print-friendly version
+            const originalTitle = document.title;
+            document.title = `Dashboard ${currentDashboard.toUpperCase()} - ${getMonthName(currentMonth)} ${currentYear}`;
+            
+            // Hide some elements for printing
+            const elementsToHide = document.querySelectorAll('.dashboard-selector, .period-selector, .btn');
+            elementsToHide.forEach(el => el.style.display = 'none');
+            
+            // Print
+            window.print();
+            
+            // Restore elements
+            elementsToHide.forEach(el => el.style.display = '');
+            document.title = originalTitle;
+        }
+
+        function getMonthName(month) {
+            const months = [
+                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+            ];
+            return months[month - 1];
+        }
     </script>
 </body>
 </html>
