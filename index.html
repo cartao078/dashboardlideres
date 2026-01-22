@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Dashboard Empresarial - Amor Saúde</title>
+    
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Bootstrap CSS (opcional, mas ajuda no layout) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Nosso CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="https://img.icons8.com/color/96/000000/dashboard.png">
+</head>
+<body>
+    <!-- Barra de Navegação -->
+    <nav class="navbar navbar-dark navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-chart-line me-2"></i>
+                <strong>DASHBOARD AMOR SAÚDE</strong>
+            </a>
+            <div class="navbar-text">
+                <span id="data-atual"></span>
+                <span class="badge bg-success ms-2" id="status-api">● ONLINE</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Container Principal -->
+    <div class="container-fluid mt-4">
+        
+        <!-- Filtros -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card filter-card">
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-3">
+                                <label class="form-label"><i class="fas fa-calendar-alt me-2"></i>Mês</label>
+                                <select class="form-select" id="mesSelect">
+                                    <option value="1">Janeiro</option>
+                                    <option value="2">Fevereiro</option>
+                                    <option value="3">Março</option>
+                                    <option value="4">Abril</option>
+                                    <option value="5">Maio</option>
+                                    <option value="6">Junho</option>
+                                    <option value="7">Julho</option>
+                                    <option value="8">Agosto</option>
+                                    <option value="9">Setembro</option>
+                                    <option value="10">Outubro</option>
+                                    <option value="11">Novembro</option>
+                                    <option value="12">Dezembro</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label"><i class="fas fa-calendar me-2"></i>Ano</label>
+                                <select class="form-select" id="anoSelect">
+                                    <!-- Será preenchido via JavaScript -->
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label"><i class="fas fa-chart-bar me-2"></i>Dashboard</label>
+                                <select class="form-select" id="dashboardSelect">
+                                    <option value="documentacao">📁 Documentação</option>
+                                    <option value="app">📱 App</option>
+                                    <option value="adimplencia">💳 Adimplência</option>
+                                    <option value="recorrencia">📈 Recorrência</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button class="btn btn-primary w-100" onclick="carregarDados()">
+                                    <i class="fas fa-sync-alt me-2"></i>Atualizar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- KPIs Principais -->
+        <div class="row mb-4" id="kpi-section">
+            <!-- KPIs serão carregados via JavaScript -->
+        </div>
+
+        <!-- Seção de Gráficos -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        <span id="grafico-titulo">Gráfico de Desempenho</span>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="mainChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-pie me-2"></i>
+                        Distribuição
+                    </div>
+                    <div class="card-body">
+                        <canvas id="pieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela de Dados Detalhados -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-table me-2"></i>
+                        <span id="tabela-titulo">Detalhamento por Consultor</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="detalhes-table">
+                                <thead>
+                                    <tr>
+                                        <!-- Cabeçalho será preenchido via JavaScript -->
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Dados serão preenchidos via JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Informações da API -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card api-info">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6><i class="fas fa-info-circle me-2"></i>Informações da API</h6>
+                                <p class="mb-1"><small>URL Base: <code id="api-url">Carregando...</code></small></p>
+                                <p class="mb-1"><small>Última Atualização: <span id="ultima-atualizacao">-</span></small></p>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="testarAPI()">
+                                    <i class="fas fa-bolt me-1"></i>Testar Conexão
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary ms-2" onclick="exportarParaExcel()">
+                                    <i class="fas fa-file-excel me-1"></i>Exportar Excel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Carregamento -->
+    <div class="modal fade" id="loadingModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-transparent border-0">
+                <div class="modal-body text-center">
+                    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="text-white mt-3" id="loading-text">Carregando dados...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Erro -->
+    <div class="modal fade" id="errorModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Erro</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="error-message">Ocorreu um erro ao carregar os dados.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="button" class="btn btn-primary" onclick="carregarDados()">Tentar Novamente</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Nosso JavaScript -->
+    <script src="script.js"></script>
+    
+    <script>
+        // Inicializar quando a página carregar
+        document.addEventListener('DOMContentLoaded', function() {
+            inicializarDashboard();
+        });
+    </script>
+</body>
+</html>
