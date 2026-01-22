@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard V20.3 - CDT Ceilânda</title>
+    <title>Dashboard V20.3 - CDT Ceilândia</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
     <style>
@@ -278,7 +278,8 @@
         .card-doc .card-icon { background: var(--primary); }
         .card-app .card-icon { background: var(--secondary); }
         .card-adim .card-icon { background: var(--success); }
-        .card-refut .card-icon { background: #ec4899; }
+        .card-refut .card-icon { background: #0ea5e9; }
+        .card-rec .card-icon { background: #f59e0b; }
 
         .metric-grid {
             display: grid;
@@ -317,6 +318,49 @@
         .percent-medium { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
         .percent-low { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
 
+        /* Sector Cards */
+        .sector-card {
+            background: white;
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+            border: 1px solid var(--gray-light);
+            transition: all 0.3s ease;
+        }
+
+        .sector-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .sector-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--gray-light);
+        }
+
+        .sector-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sector-count {
+            background: var(--gray-light);
+            color: var(--gray);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
         /* Consultant Grid */
         .consultant-grid {
             display: grid;
@@ -326,16 +370,16 @@
 
         .consultant-card {
             background: white;
-            border-radius: 14px;
-            padding: 20px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
             border: 1px solid var(--gray-light);
             transition: all 0.3s ease;
         }
 
         .consultant-card:hover {
             transform: translateY(-3px);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
         }
 
         .consultant-header {
@@ -343,14 +387,14 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 15px;
-            padding-bottom: 15px;
+            padding-bottom: 12px;
             border-bottom: 1px solid var(--gray-light);
         }
 
         .consultant-name {
             font-weight: 600;
             color: var(--dark);
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
 
         .consultant-sector {
@@ -366,6 +410,8 @@
         .sector-recepcao { background: rgba(16, 185, 129, 0.1); color: var(--success); }
         .sector-refiliacao { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
         .sector-web { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+        .sector-televendas { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+        .sector-outros { background: rgba(107, 114, 128, 0.1); color: var(--gray); }
 
         /* Table */
         .data-table {
@@ -472,7 +518,7 @@
             <div class="logo">
                 <i class="fas fa-chart-line"></i>
                 <div class="logo-text">
-                    <h1>Dashboard V20.3 - CDT Ceilândia</h1>
+                    <h1>Dashboard V20.4 - CDT CEILÂNDIA</h1>
                     <p>Monitoramento completo de desempenho - 5 dashboards integrados</p>
                 </div>
             </div>
@@ -501,7 +547,7 @@
                 <i class="fas fa-redo"></i> Recorrência
             </button>
             <button class="dashboard-btn" data-dashboard="refuturiza">
-                <i class="fas fa-phone"></i> Refuturiza
+                <i class="fas fa-book"></i> Refuturiza
             </button>
         </div>
 
@@ -637,8 +683,11 @@
                     url += `&mes=${currentMonth}&ano=${currentYear}`;
                 }
                 
+                console.log('Fetching from:', url);
                 const response = await fetch(url);
                 const data = await response.json();
+                
+                console.log('API Response:', data);
                 
                 if (data.status === 'success') {
                     dashboardData = data.data;
@@ -647,6 +696,7 @@
                     showError(data.error || 'Erro ao carregar dados');
                 }
             } catch (error) {
+                console.error('Fetch error:', error);
                 showError('Erro de conexão: ' + error.message);
             }
         }
@@ -680,6 +730,22 @@
             const percentGeral = geral.total > 0 ? Math.round((geral.aprovados / geral.total) * 100) : 0;
             const percentLoja = vendasLoja.total > 0 ? Math.round((vendasLoja.aprovados / vendasLoja.total) * 100) : 0;
             const percentWeb = vendasWeb.total > 0 ? Math.round((vendasWeb.aprovados / vendasWeb.total) * 100) : 0;
+            
+            // Group consultants by sector
+            const consultantsBySector = {};
+            consultores.forEach(c => {
+                const sector = c.setor || 'OUTROS';
+                if (!consultantsBySector[sector]) {
+                    consultantsBySector[sector] = [];
+                }
+                consultantsBySector[sector].push(c);
+            });
+            
+            // Order sectors
+            const sectorOrder = ['VENDAS', 'RECEPCAO', 'REFILIACAO', 'WEB SITE', 'TELEVENDAS', 'OUTROS'];
+            const sortedSectors = Object.keys(consultantsBySector).sort((a, b) => {
+                return sectorOrder.indexOf(a) - sectorOrder.indexOf(b);
+            });
             
             const html = `
                 <h2 style="margin-bottom: 25px; color: var(--dark); font-size: 1.5rem;">
@@ -771,45 +837,65 @@
                     </div>
                 </div>
                 
-                <!-- Detailed Table -->
-                <h3 style="margin: 30px 0 20px; color: var(--dark); font-size: 1.2rem;">
-                    <i class="fas fa-users" style="color: var(--primary); margin-right: 10px;"></i>
-                    Desempenho por Consultor
+                <!-- Detailed by Sector -->
+                <h3 style="margin: 40px 0 25px; color: var(--dark); font-size: 1.3rem; padding-bottom: 10px; border-bottom: 2px solid var(--gray-light);">
+                    <i class="fas fa-layer-group" style="color: var(--primary); margin-right: 10px;"></i>
+                    Desempenho por Setor
                 </h3>
                 
-                <div class="consultant-grid">
-                    ${consultores.map(consultor => {
-                        const percent = consultor.total > 0 ? Math.round((consultor.aprovados / consultor.total) * 100) : 0;
-                        const sectorClass = getSectorClass(consultor.setor);
-                        
-                        return `
-                        <div class="consultant-card">
-                            <div class="consultant-header">
-                                <div class="consultant-name">${consultor.nome}</div>
-                                <div class="consultant-sector ${sectorClass}">${consultor.setor}</div>
+                ${sortedSectors.map(sector => {
+                    const sectorConsultants = consultantsBySector[sector];
+                    const sectorTotal = sectorConsultants.reduce((sum, c) => sum + c.total, 0);
+                    const sectorAprovados = sectorConsultants.reduce((sum, c) => sum + c.aprovados, 0);
+                    const sectorPercent = sectorTotal > 0 ? Math.round((sectorAprovados / sectorTotal) * 100) : 0;
+                    const sectorClass = getSectorClass(sector);
+                    
+                    return `
+                    <div class="sector-card">
+                        <div class="sector-header">
+                            <div class="sector-title">
+                                <i class="${getSectorIcon(sector)}"></i>
+                                ${sector}
+                                <span class="sector-count">${sectorConsultants.length} consultores</span>
                             </div>
-                            <div class="metric-grid">
-                                <div class="metric-item">
-                                    <div class="metric-label">Total</div>
-                                    <div class="metric-value">${consultor.total}</div>
-                                </div>
-                                <div class="metric-item">
-                                    <div class="metric-label">Aprovados</div>
-                                    <div class="metric-value" style="color: var(--success);">${consultor.aprovados}</div>
-                                </div>
-                                <div class="metric-item">
-                                    <div class="metric-label">Pendências</div>
-                                    <div class="metric-value" style="color: var(--danger);">${consultor.pendencias}</div>
-                                </div>
-                                <div class="metric-item">
-                                    <div class="metric-label">% Aprovados</div>
-                                    <div class="metric-percent ${getPercentClass(percent)}">${percent}%</div>
-                                </div>
-                            </div>
+                            <div class="metric-percent ${getPercentClass(sectorPercent)}">${sectorPercent}% aprovados</div>
                         </div>
-                        `;
-                    }).join('')}
-                </div>
+                        
+                        <div class="consultant-grid">
+                            ${sectorConsultants.sort((a, b) => b.total - a.total).map(consultor => {
+                                const percent = consultor.total > 0 ? Math.round((consultor.aprovados / consultor.total) * 100) : 0;
+                                
+                                return `
+                                <div class="consultant-card">
+                                    <div class="consultant-header">
+                                        <div class="consultant-name">${consultor.nome}</div>
+                                        <div class="consultant-sector ${sectorClass}">${consultor.setor}</div>
+                                    </div>
+                                    <div class="metric-grid">
+                                        <div class="metric-item">
+                                            <div class="metric-label">Total</div>
+                                            <div class="metric-value">${consultor.total}</div>
+                                        </div>
+                                        <div class="metric-item">
+                                            <div class="metric-label">Aprovados</div>
+                                            <div class="metric-value" style="color: var(--success);">${consultor.aprovados}</div>
+                                        </div>
+                                        <div class="metric-item">
+                                            <div class="metric-label">Pendências</div>
+                                            <div class="metric-value" style="color: var(--danger);">${consultor.pendencias}</div>
+                                        </div>
+                                        <div class="metric-item">
+                                            <div class="metric-label">% Aprovados</div>
+                                            <div class="metric-percent ${getPercentClass(percent)}">${percent}%</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                    `;
+                }).join('')}
             `;
             
             dashboardContent.innerHTML = html;
@@ -822,6 +908,27 @@
             const percentGeral = geral.total > 0 ? Math.round((geral.sim / geral.total) * 100) : 0;
             const percentLoja = appLoja.total > 0 ? Math.round((appLoja.sim / appLoja.total) * 100) : 0;
             const percentWeb = appWeb.total > 0 ? Math.round((appWeb.sim / appWeb.total) * 100) : 0;
+            
+            // Group consultants by sector
+            const consultantsBySector = {};
+            consultores.forEach(c => {
+                const sector = c.setor || 'OUTROS';
+                if (!consultantsBySector[sector]) {
+                    consultantsBySector[sector] = [];
+                }
+                consultantsBySector[sector].push(c);
+            });
+            
+            // Order sectors
+            const sectorOrder = ['VENDAS', 'RECEPCAO', 'REFILIACAO', 'WEB SITE', 'TELEVENDAS', 'OUTROS', 'RETENÇÃO'];
+            const sortedSectors = Object.keys(consultantsBySector).sort((a, b) => {
+                return sectorOrder.indexOf(a) - sectorOrder.indexOf(b);
+            });
+            
+            // Add retention consultants as separate sector
+            if (consultorasRetencao && consultorasRetencao.length > 0) {
+                consultantsBySector['RETENÇÃO'] = consultorasRetencao;
+            }
             
             const html = `
                 <h2 style="margin-bottom: 25px; color: var(--dark); font-size: 1.5rem;">
@@ -913,86 +1020,70 @@
                     </div>
                 </div>
                 
-                <!-- Retention Consultants -->
-                ${consultorasRetencao && consultorasRetencao.length > 0 ? `
-                <h3 style="margin: 40px 0 20px; color: var(--dark); font-size: 1.2rem;">
-                    <i class="fas fa-crown" style="color: #f59e0b; margin-right: 10px;"></i>
-                    Consultoras de Retenção
+                <!-- Detailed by Sector -->
+                <h3 style="margin: 40px 0 25px; color: var(--dark); font-size: 1.3rem; padding-bottom: 10px; border-bottom: 2px solid var(--gray-light);">
+                    <i class="fas fa-layer-group" style="color: var(--secondary); margin-right: 10px;"></i>
+                    Desempenho por Setor
                 </h3>
                 
-                <div class="consultant-grid" style="margin-bottom: 30px;">
-                    ${consultorasRetencao.map(consultora => {
-                        const percent = consultora.total > 0 ? Math.round((consultora.sim / consultora.total) * 100) : 0;
-                        
-                        return `
-                        <div class="consultant-card" style="border-left: 4px solid #f59e0b;">
-                            <div class="consultant-header">
-                                <div class="consultant-name">${consultora.nome} (RETENÇÃO)</div>
-                                <div class="consultant-sector sector-vendas">${consultora.setor}</div>
+                ${sortedSectors.map(sector => {
+                    const sectorConsultants = consultantsBySector[sector];
+                    const sectorTotal = sectorConsultants.reduce((sum, c) => sum + c.total, 0);
+                    const sectorSim = sectorConsultants.reduce((sum, c) => sum + (c.sim || 0), 0);
+                    const sectorPercent = sectorTotal > 0 ? Math.round((sectorSim / sectorTotal) * 100) : 0;
+                    const sectorClass = getSectorClass(sector);
+                    const isRetention = sector === 'RETENÇÃO';
+                    
+                    return `
+                    <div class="sector-card" ${isRetention ? 'style="border-left: 4px solid #f59e0b;"' : ''}>
+                        <div class="sector-header">
+                            <div class="sector-title">
+                                <i class="${getSectorIcon(sector)}"></i>
+                                ${sector}
+                                <span class="sector-count">${sectorConsultants.length} ${isRetention ? 'consultoras' : 'consultores'}</span>
                             </div>
-                            <div class="metric-grid">
-                                <div class="metric-item">
-                                    <div class="metric-label">Total Clientes</div>
-                                    <div class="metric-value">${consultora.total}</div>
-                                </div>
-                                <div class="metric-item">
-                                    <div class="metric-label">Com App</div>
-                                    <div class="metric-value" style="color: var(--success);">${consultora.sim}</div>
-                                </div>
-                                <div class="metric-item">
-                                    <div class="metric-label">Sem App</div>
-                                    <div class="metric-value" style="color: var(--danger);">${consultora.nao}</div>
-                                </div>
-                                <div class="metric-item">
-                                    <div class="metric-label">% Com App</div>
-                                    <div class="metric-percent ${getPercentClass(percent)}">${percent}%</div>
-                                </div>
-                            </div>
+                            <div class="metric-percent ${getPercentClass(sectorPercent)}">${sectorPercent}% com app</div>
                         </div>
-                        `;
-                    }).join('')}
-                </div>
-                ` : ''}
-                
-                <!-- Other Consultants -->
-                <h3 style="margin: 30px 0 20px; color: var(--dark); font-size: 1.2rem;">
-                    <i class="fas fa-users" style="color: var(--primary); margin-right: 10px;"></i>
-                    Demais Consultores
-                </h3>
-                
-                <div class="consultant-grid">
-                    ${consultores.filter(c => !c.origem || c.origem !== 'retencao').map(consultor => {
-                        const percent = consultor.total > 0 ? Math.round((consultor.sim / consultor.total) * 100) : 0;
-                        const sectorClass = getSectorClass(consultor.setor);
                         
-                        return `
-                        <div class="consultant-card">
-                            <div class="consultant-header">
-                                <div class="consultant-name">${consultor.nome}</div>
-                                <div class="consultant-sector ${sectorClass}">${consultor.setor}</div>
-                            </div>
-                            <div class="metric-grid">
-                                <div class="metric-item">
-                                    <div class="metric-label">Total</div>
-                                    <div class="metric-value">${consultor.total}</div>
+                        <div class="consultant-grid">
+                            ${sectorConsultants.sort((a, b) => b.total - a.total).map(consultor => {
+                                const percent = consultor.total > 0 ? Math.round(((consultor.sim || 0) / consultor.total) * 100) : 0;
+                                
+                                return `
+                                <div class="consultant-card" ${isRetention ? 'style="border-left: 3px solid #f59e0b;"' : ''}>
+                                    <div class="consultant-header">
+                                        <div class="consultant-name">${consultor.nome}${isRetention ? ' (RETENÇÃO)' : ''}</div>
+                                        <div class="consultant-sector ${sectorClass}">${consultor.setor}</div>
+                                    </div>
+                                    <div class="metric-grid">
+                                        <div class="metric-item">
+                                            <div class="metric-label">Total</div>
+                                            <div class="metric-value">${consultor.total}</div>
+                                        </div>
+                                        <div class="metric-item">
+                                            <div class="metric-label">Com App</div>
+                                            <div class="metric-value" style="color: var(--success);">${consultor.sim || 0}</div>
+                                        </div>
+                                        <div class="metric-item">
+                                            <div class="metric-label">Sem App</div>
+                                            <div class="metric-value" style="color: var(--danger);">${consultor.nao || 0}</div>
+                                        </div>
+                                        <div class="metric-item">
+                                            <div class="metric-label">Cancelados</div>
+                                            <div class="metric-value" style="color: var(--gray);">${consultor.cancelado || 0}</div>
+                                        </div>
+                                        <div class="metric-item">
+                                            <div class="metric-label">% Com App</div>
+                                            <div class="metric-percent ${getPercentClass(percent)}">${percent}%</div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="metric-item">
-                                    <div class="metric-label">Com App</div>
-                                    <div class="metric-value" style="color: var(--success);">${consultor.sim}</div>
-                                </div>
-                                <div class="metric-item">
-                                    <div class="metric-label">Sem App</div>
-                                    <div class="metric-value" style="color: var(--danger);">${consultor.nao}</div>
-                                </div>
-                                <div class="metric-item">
-                                    <div class="metric-label">% Com App</div>
-                                    <div class="metric-percent ${getPercentClass(percent)}">${percent}%</div>
-                                </div>
-                            </div>
+                                `;
+                            }).join('')}
                         </div>
-                        `;
-                    }).join('')}
-                </div>
+                    </div>
+                    `;
+                }).join('')}
             `;
             
             dashboardContent.innerHTML = html;
@@ -1211,18 +1302,24 @@
             
             const percentGeral = geral.total > 0 ? Math.round((geral.comLigacao / geral.total) * 100) : 0;
             
-            // Calculate statistics
-            const bestPercent = consultores.length > 0 ? 
-                Math.max(...consultores.map(c => c.total > 0 ? Math.round((c.comLigacao / c.total) * 100) : 0)) : 0;
+            // Group consultants if they have sector information
+            const consultantsBySector = {};
+            let hasSectors = false;
             
-            const worstPercent = consultores.length > 0 ? 
-                Math.min(...consultores.filter(c => c.total > 0).map(c => Math.round((c.comLigacao / c.total) * 100))) : 0;
-            
-            const avgPerConsultant = consultores.length > 0 ? Math.round(geral.total / consultores.length) : 0;
+            if (consultores && consultores.length > 0 && consultores[0].setor) {
+                hasSectors = true;
+                consultores.forEach(c => {
+                    const sector = c.setor || 'OUTROS';
+                    if (!consultantsBySector[sector]) {
+                        consultantsBySector[sector] = [];
+                    }
+                    consultantsBySector[sector].push(c);
+                });
+            }
             
             const html = `
                 <h2 style="margin-bottom: 25px; color: var(--dark); font-size: 1.5rem;">
-                    <i class="fas fa-phone" style="color: #ec4899; margin-right: 10px;"></i>
+                    <i class="fas fa-book" style="color: #0ea5e9; margin-right: 10px;"></i>
                     Dashboard Refuturiza - ${mes} ${ano}
                 </h2>
                 
@@ -1231,12 +1328,12 @@
                     <div class="card-header">
                         <div class="card-title">Refuturiza - Total da Loja</div>
                         <div class="card-icon">
-                            <i class="fas fa-phone-volume"></i>
+                            <i class="fas fa-book-open"></i>
                         </div>
                     </div>
                     <div class="metric-grid">
                         <div class="metric-item">
-                            <div class="metric-label">Total Vendas</div>
+                            <div class="metric-label">Total Cursos</div>
                             <div class="metric-value">${geral.total}</div>
                         </div>
                         <div class="metric-item">
@@ -1258,39 +1355,105 @@
                     </div>
                 </div>
                 
-                <!-- Consultant Cards -->
-                ${consultores.length > 0 ? `
+                ${consultores && consultores.length > 0 ? `
+                
+                ${hasSectors ? `
+                <!-- Consultants by Sector -->
+                <h3 style="margin: 40px 0 25px; color: var(--dark); font-size: 1.3rem; padding-bottom: 10px; border-bottom: 2px solid var(--gray-light);">
+                    <i class="fas fa-layer-group" style="color: #0ea5e9; margin-right: 10px;"></i>
+                    Cursos por Consultor (Agrupado por Setor)
+                </h3>
+                
+                ${Object.keys(consultantsBySector).map(sector => {
+                    const sectorConsultants = consultantsBySector[sector];
+                    const sectorTotal = sectorConsultants.reduce((sum, c) => sum + c.total, 0);
+                    const sectorComLigacao = sectorConsultants.reduce((sum, c) => sum + (c.comLigacao || 0), 0);
+                    const sectorPercent = sectorTotal > 0 ? Math.round((sectorComLigacao / sectorTotal) * 100) : 0;
+                    const sectorClass = getSectorClass(sector);
+                    
+                    return `
+                    <div class="sector-card">
+                        <div class="sector-header">
+                            <div class="sector-title">
+                                <i class="${getSectorIcon(sector)}"></i>
+                                ${sector}
+                                <span class="sector-count">${sectorConsultants.length} consultores</span>
+                            </div>
+                            <div class="metric-percent ${getPercentClass(sectorPercent)}">${sectorPercent}% com ligação</div>
+                        </div>
+                        
+                        <div class="consultant-grid">
+                            ${sectorConsultants.sort((a, b) => b.total - a.total).map(consultor => {
+                                const percent = consultor.total > 0 ? Math.round(((consultor.comLigacao || 0) / consultor.total) * 100) : 0;
+                                
+                                return `
+                                <div class="consultant-card">
+                                    <div class="consultant-header">
+                                        <div class="consultant-name">${consultor.nome}</div>
+                                        <div class="consultant-sector ${sectorClass}">${consultor.setor}</div>
+                                    </div>
+                                    <div class="metric-grid">
+                                        <div class="metric-item">
+                                            <div class="metric-label">Total Cursos</div>
+                                            <div class="metric-value">${consultor.total}</div>
+                                        </div>
+                                        <div class="metric-item">
+                                            <div class="metric-label">Com Ligação</div>
+                                            <div class="metric-value" style="color: var(--success);">${consultor.comLigacao || 0}</div>
+                                        </div>
+                                        <div class="metric-item">
+                                            <div class="metric-label">Sem Ligação</div>
+                                            <div class="metric-value" style="color: var(--danger);">${consultor.semLigacao || 0}</div>
+                                        </div>
+                                        <div class="metric-item">
+                                            <div class="metric-label">Cancelados</div>
+                                            <div class="metric-value" style="color: var(--gray);">${consultor.cancelado || 0}</div>
+                                        </div>
+                                        <div class="metric-item">
+                                            <div class="metric-label">% Com Ligação</div>
+                                            <div class="metric-percent ${getPercentClass(percent)}">${percent}%</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                    `;
+                }).join('')}
+                ` : `
+                <!-- All Consultants (no sector grouping) -->
                 <h3 style="margin: 40px 0 20px; color: var(--dark); font-size: 1.2rem;">
-                    <i class="fas fa-users" style="color: #ec4899; margin-right: 10px;"></i>
-                    Consultores com Vendas (${consultores.length})
+                    <i class="fas fa-users" style="color: #0ea5e9; margin-right: 10px;"></i>
+                    Consultores com Cursos (${consultores.length})
                 </h3>
                 
                 <div class="consultant-grid">
                     ${consultores.map(consultor => {
-                        const percent = consultor.total > 0 ? Math.round((consultor.comLigacao / consultor.total) * 100) : 0;
+                        const percent = consultor.total > 0 ? Math.round(((consultor.comLigacao || 0) / consultor.total) * 100) : 0;
                         
                         return `
                         <div class="consultant-card">
                             <div class="consultant-header">
                                 <div class="consultant-name">${consultor.nome}</div>
-                                <div class="consultant-sector" style="background: rgba(236, 72, 153, 0.1); color: #ec4899;">VENDAS</div>
+                                <div class="consultant-sector" style="background: rgba(14, 165, 233, 0.1); color: #0ea5e9;">CURSOS</div>
                             </div>
                             <div class="metric-grid">
                                 <div class="metric-item">
-                                    <div class="metric-label">Total Vendas</div>
+                                    <div class="metric-label">Total Cursos</div>
                                     <div class="metric-value">${consultor.total}</div>
                                 </div>
                                 <div class="metric-item">
                                     <div class="metric-label">Com Ligação</div>
-                                    <div class="metric-value" style="color: var(--success);">${consultor.comLigacao}</div>
+                                    <div class="metric-value" style="color: var(--success);">${consultor.comLigacao || 0}</div>
                                 </div>
                                 <div class="metric-item">
                                     <div class="metric-label">Sem Ligação</div>
-                                    <div class="metric-value" style="color: var(--danger);">${consultor.semLigacao}</div>
+                                    <div class="metric-value" style="color: var(--danger);">${consultor.semLigacao || 0}</div>
                                 </div>
                                 <div class="metric-item">
                                     <div class="metric-label">Cancelados</div>
-                                    <div class="metric-value" style="color: var(--gray);">${consultor.cancelado}</div>
+                                    <div class="metric-value" style="color: var(--gray);">${consultor.cancelado || 0}</div>
                                 </div>
                                 <div class="metric-item">
                                     <div class="metric-label">% Com Ligação</div>
@@ -1301,13 +1464,14 @@
                         `;
                     }).join('')}
                 </div>
+                `}
                 
                 <!-- Summary -->
-                <div class="card" style="margin-top: 40px; background: linear-gradient(90deg, #ec4899 0%, #8b5cf6 100%); color: white;">
+                <div class="card" style="margin-top: 40px; background: linear-gradient(90deg, #0ea5e9 0%, #3b82f6 100%); color: white;">
                     <div class="card-header" style="border-bottom-color: rgba(255,255,255,0.2);">
-                        <div class="card-title" style="color: white;">📊 Resumo Final</div>
+                        <div class="card-title" style="color: white;">📊 Resumo Final - Cursos Online</div>
                         <div class="card-icon" style="background: rgba(255,255,255,0.2);">
-                            <i class="fas fa-chart-bar"></i>
+                            <i class="fas fa-graduation-cap"></i>
                         </div>
                     </div>
                     <div class="metric-grid">
@@ -1316,28 +1480,24 @@
                             <div class="metric-value" style="color: white;">${consultores.length}</div>
                         </div>
                         <div class="metric-item">
-                            <div class="metric-label" style="color: rgba(255,255,255,0.8);">Total Vendas</div>
+                            <div class="metric-label" style="color: rgba(255,255,255,0.8);">Total Cursos</div>
                             <div class="metric-value" style="color: white;">${geral.total}</div>
                         </div>
                         <div class="metric-item">
                             <div class="metric-label" style="color: rgba(255,255,255,0.8);">Média por Consultor</div>
-                            <div class="metric-value" style="color: white;">${avgPerConsultant}</div>
+                            <div class="metric-value" style="color: white;">${consultores.length > 0 ? Math.round(geral.total / consultores.length) : 0}</div>
                         </div>
                         <div class="metric-item">
-                            <div class="metric-label" style="color: rgba(255,255,255,0.8);">Melhor %</div>
-                            <div class="metric-percent" style="background: rgba(255,255,255,0.2); color: white;">${bestPercent}%</div>
-                        </div>
-                        <div class="metric-item">
-                            <div class="metric-label" style="color: rgba(255,255,255,0.8);">Pior %</div>
-                            <div class="metric-percent" style="background: rgba(255,255,255,0.2); color: white;">${worstPercent}%</div>
+                            <div class="metric-label" style="color: rgba(255,255,255,0.8);">Taxa de Contato</div>
+                            <div class="metric-percent" style="background: rgba(255,255,255,0.2); color: white;">${percentGeral}%</div>
                         </div>
                     </div>
                 </div>
                 ` : `
                 <div class="error-message" style="text-align: center; padding: 40px;">
                     <i class="fas fa-info-circle" style="font-size: 3rem; margin-bottom: 20px; color: var(--gray);"></i>
-                    <h3 style="margin-bottom: 10px; color: var(--gray);">Nenhum consultor com vendas neste período</h3>
-                    <p style="color: var(--gray);">Não foram encontrados dados de vendas para ${mes} ${ano}.</p>
+                    <h3 style="margin-bottom: 10px; color: var(--gray);">Nenhum consultor com cursos neste período</h3>
+                    <p style="color: var(--gray);">Não foram encontrados dados de cursos online para ${mes} ${ano}.</p>
                 </div>
                 `}
             `;
@@ -1353,12 +1513,30 @@
         }
 
         function getSectorClass(sector) {
-            switch(sector?.toUpperCase()) {
+            if (!sector) return 'sector-outros';
+            
+            switch(sector.toUpperCase()) {
                 case 'VENDAS': return 'sector-vendas';
                 case 'RECEPCAO': return 'sector-recepcao';
                 case 'REFILIACAO': return 'sector-refiliacao';
-                case 'WEB SITE': return 'sector-web';
-                default: return '';
+                case 'WEB SITE': case 'WEB': return 'sector-web';
+                case 'TELEVENDAS': return 'sector-televendas';
+                case 'RETENÇÃO': case 'RETENCAO': return 'sector-vendas';
+                default: return 'sector-outros';
+            }
+        }
+
+        function getSectorIcon(sector) {
+            if (!sector) return 'fas fa-users';
+            
+            switch(sector.toUpperCase()) {
+                case 'VENDAS': return 'fas fa-shopping-cart';
+                case 'RECEPCAO': return 'fas fa-headset';
+                case 'REFILIACAO': return 'fas fa-user-plus';
+                case 'WEB SITE': case 'WEB': return 'fas fa-globe';
+                case 'TELEVENDAS': return 'fas fa-phone-alt';
+                case 'RETENÇÃO': case 'RETENCAO': return 'fas fa-crown';
+                default: return 'fas fa-users';
             }
         }
 
