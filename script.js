@@ -1,7 +1,7 @@
 // script.js
 
 // CONFIGURAÇÃO DA API - SUA URL DO APPS SCRIPT
-const API_BASE_URL = "https://script.google.com/macros/s/AKfycbxLbHCBqihyh73w9S9X6Pf14VIHTLc1fYAouwBwIJfL/dev"; // Substitua pela URL do deployAPI()
+const API_BASE_URL = "https://script.google.com/macros/s/AKfycbwMISyxH0g_Qku9R0JjTUaR998yZIPDYdOViiUm3l7MJbl_WqowErW4GhwLLEYwgjLI9g/exec"; // Substitua pela URL do deployAPI()
 
 // Variáveis globais
 let dadosAtuais = null;
