@@ -1,5 +1,5 @@
 // Configuration
-const API_URL = 'https://script.google.com/macros/s/AKfycbyFrAeP48Dcq7p1krCZSWNE0AoXB7krjo6OrW5_sJNu9Pc-raY-XWnVy6McX22i6VjzPg/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzAaI4lKtO4DPOPhHeUK6V9Dymbh3V2hZQuEBPyKlIL5Kp1P-R3yoiGD_kyzHKvTR68yw/exec';
 
 // State
 let currentDashboard = 'documentacao';
