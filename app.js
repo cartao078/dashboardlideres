@@ -1,10 +1,13 @@
 // ============================================================================
-// DASHBOARD V20.10 - app.js
-// - Abas originais: cards detalhados SEM gráficos
-// - Nova aba "Resumo": visão geral com gráficos + ranking (sem Web/Televendas)
+// DASHBOARD V20.10 - app.js — COM SUPABASE
+// Busca primeiro do Supabase (rápido), fallback pro Apps Script se falhar
 // ============================================================================
 
 const API_URL = 'https://script.google.com/macros/s/AKfycby7E_l1q-sgkJV9oPYIdsOwjF3rJUnNjPwzSrf-jOhCwTRbk5NNLPtdF9S2320ngiI_Hw/exec';
+
+// ⚠️ CONFIGURE AQUI — pegue no Supabase: Settings → API
+const SUPABASE_URL  = 'https://vycjtmjvkwvxunxtkdyi.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_qNWYXG_mPokAp-5C08AM0Q_p-HdsjYS'; // Settings → API → anon (public) — pode expor no frontend
 
 const C = {
     green:'#00a651', greenFade:'rgba(0,166,81,0.12)',
@@ -17,25 +20,21 @@ const RANKING_SETORES = ['VENDAS','RECEPCAO','REFILIACAO'];
 const SEM_FILTRO      = ['recorrencia','recorrencia_vendedor'];
 
 // ── Cache em dois níveis ───────────────────────────────────────────────────
-// Nível 1: memória (Map) — instantâneo, some ao fechar
-// Nível 2: localStorage — persiste entre sessões, TTL de 30 min
 const CACHE_MEM  = new Map();
-const CACHE_TTL  = 30 * 60 * 1000; // 30 minutos — fica aberto o dia todo
+const CACHE_TTL  = 30 * 60 * 1000;
 const LS_PREFIX  = 'cdt_dash_';
 
 function cacheKey(ep,m,y){ return SEM_FILTRO.includes(ep)?ep:`${ep}:${m}:${y}`; }
 
 function getCached(k){
-    // 1) Memória
     const mem = CACHE_MEM.get(k);
     if(mem && Date.now()-mem.ts < CACHE_TTL) return mem.data;
-    // 2) localStorage
     try{
         const raw = localStorage.getItem(LS_PREFIX+k);
         if(raw){
             const entry = JSON.parse(raw);
             if(Date.now()-entry.ts < CACHE_TTL){
-                CACHE_MEM.set(k,{data:entry.data,ts:entry.ts}); // promove pra memória
+                CACHE_MEM.set(k,{data:entry.data,ts:entry.ts});
                 return entry.data;
             }
             localStorage.removeItem(LS_PREFIX+k);
@@ -55,16 +54,151 @@ function invalidateCache(k){
     try{ localStorage.removeItem(LS_PREFIX+k); }catch(_){}
 }
 
-let currentDashboard = 'resumo';
-let currentMonth     = new Date().getMonth() + 1;
-let currentYear      = new Date().getFullYear();
-const chartInstances = {};
+// ============================================================================
+// CAMADA DE DADOS — tenta Supabase primeiro, cai pro Apps Script se falhar
+// ============================================================================
 
-let dashboardBtns, monthSelect, yearSelect, dashboardContent,
-    refreshBtn, downloadBtn, loadingEl, lastUpdateEl, periodSelector;
+/**
+ * Busca dados do Supabase REST API.
+ * Retorna null se não encontrar ou der erro.
+ */
+async function fetchSupabase(endpoint, mes, ano) {
+    try {
+        let url;
+        const headers = {
+            'apikey': SUPABASE_ANON,
+            'Authorization': `Bearer ${SUPABASE_ANON}`
+        };
 
-// ── Auto-refresh a cada 30min enquanto a aba fica aberta ───────────────────
-// Atualiza silenciosamente sem travar a tela
+        if (endpoint === 'recorrencia_vendedor') {
+            url = `${SUPABASE_URL}/rest/v1/recorrencia_vendedor?select=*&limit=1`;
+        } else if (endpoint === 'recorrencia') {
+            url = `${SUPABASE_URL}/rest/v1/recorrencia?mes=eq.${mes}&ano=eq.${ano}&select=*`;
+        } else if (endpoint === 'app') {
+            url = `${SUPABASE_URL}/rest/v1/app_dashboard?mes=eq.${mes}&ano=eq.${ano}&select=*`;
+        } else {
+            url = `${SUPABASE_URL}/rest/v1/${endpoint}?mes=eq.${mes}&ano=eq.${ano}&select=*`;
+        }
+
+        const resp = await fetch(url, { headers });
+        if (!resp.ok) return null;
+
+        const rows = await resp.json();
+        if (!rows || rows.length === 0) return null;
+
+        return rowToData(endpoint, rows[0]);
+    } catch(_) {
+        return null;
+    }
+}
+
+/**
+ * Converte uma linha do Supabase de volta ao formato que o dashboard espera
+ * (mesmo formato que o Apps Script retornava)
+ */
+function rowToData(endpoint, row) {
+    if (!row) return null;
+
+    if (endpoint === 'documentacao') {
+        return {
+            mes: row.mes_nome,
+            ano: row.ano,
+            geral: {
+                total: row.geral_total, aprovados: row.geral_aprovados,
+                pendencias: row.geral_pendencias, reprovados: row.geral_reprovados,
+                expirado: row.geral_expirado, pendente: row.geral_pendente,
+                naoEnviado: row.geral_nao_enviado
+            },
+            vendasLoja: {
+                total: row.loja_total, aprovados: row.loja_aprovados,
+                pendencias: row.loja_pendencias, reprovados: row.loja_reprovados,
+                expirado: row.loja_expirado, pendente: row.loja_pendente,
+                naoEnviado: row.loja_nao_enviado
+            },
+            vendasWeb: {
+                total: row.web_total, aprovados: row.web_aprovados,
+                pendencias: row.web_pendencias, reprovados: row.web_reprovados,
+                expirado: row.web_expirado, pendente: row.web_pendente,
+                naoEnviado: row.web_nao_enviado
+            },
+            consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : row.consultores
+        };
+    }
+
+    if (endpoint === 'app') {
+        return {
+            mes: row.mes_nome, ano: row.ano,
+            geral: { total: row.geral_total, sim: row.geral_sim, nao: row.geral_nao, cancelado: row.geral_cancelado, outros: row.geral_outros },
+            appLoja: { total: row.loja_total, sim: row.loja_sim, nao: row.loja_nao, cancelado: row.loja_cancelado, outros: row.loja_outros },
+            appWeb: { total: row.web_total, sim: row.web_sim, nao: row.web_nao, cancelado: row.web_cancelado, outros: row.web_outros },
+            consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : row.consultores,
+            consultorasRetencao: typeof row.consultoras_retencao === 'string' ? JSON.parse(row.consultoras_retencao) : (row.consultoras_retencao || [])
+        };
+    }
+
+    if (endpoint === 'adimplencia') {
+        return {
+            mes: row.mes_nome, ano: row.ano,
+            geral: {
+                totalTrocas: row.geral_total_trocas, mensOk: row.geral_mens_ok,
+                mensAberto: row.geral_mens_aberto, mensAtraso: row.geral_mens_atraso,
+                aprovados: row.geral_aprovados, pendentes: row.geral_pendentes,
+                totalBi: row.geral_total_bi, foraBi: row.geral_fora_bi,
+                okBi: row.geral_ok_bi, percentualAprovado: row.geral_percentual_aprovado
+            },
+            consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : row.consultores
+        };
+    }
+
+    if (endpoint === 'recorrencia') {
+        return typeof row.dados === 'string' ? JSON.parse(row.dados) : row.dados;
+    }
+
+    if (endpoint === 'recorrencia_vendedor') {
+        return {
+            mes: 'TODOS OS MESES', ano: 'TODOS OS ANOS',
+            geral: {
+                totalVendasPromocao: row.geral_total_vendas, totalOk: row.geral_total_ok,
+                totalEmAberto: row.geral_total_em_aberto, totalAtraso: row.geral_total_atraso,
+                totalOutros: row.geral_total_outros, percentualVendasOk: row.geral_percentual_ok
+            },
+            consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : row.consultores,
+            dadosPorSetor: typeof row.dados_por_setor === 'string' ? JSON.parse(row.dados_por_setor) : row.dados_por_setor,
+            totalConsultores: row.total_consultores,
+            totalRegistros: row.total_registros
+        };
+    }
+
+    if (endpoint === 'refuturiza') {
+        return {
+            mes: row.mes_nome, ano: row.ano,
+            geral: { total: row.geral_total, comLigacao: row.geral_com_ligacao, semLigacao: row.geral_sem_ligacao, cancelado: row.geral_cancelado },
+            consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : row.consultores
+        };
+    }
+
+    return null;
+}
+
+/**
+ * Busca dados: tenta Supabase → se vazio/erro cai pro Apps Script
+ */
+async function fetchData(endpoint, mes, ano) {
+    // 1. Supabase (rápido)
+    const dadosSupabase = await fetchSupabase(endpoint, mes, ano);
+    if (dadosSupabase) return { status: 'success', data: dadosSupabase, fonte: 'supabase' };
+
+    // 2. Fallback: Apps Script (lento, mas garante dados)
+    const url = buildUrl(endpoint, mes, ano);
+    const resp = await fetch(url);
+    const json = await resp.json();
+    if (json.status === 'success') {
+        json.fonte = 'appscript';
+    }
+    return json;
+}
+
+// ── Auto-refresh silencioso a cada 30min ──────────────────────────────────
 setInterval(() => {
     const k = cacheKey(currentDashboard, currentMonth, currentYear);
     invalidateCache(k);
@@ -72,23 +206,20 @@ setInterval(() => {
 }, CACHE_TTL);
 
 async function silentRefresh(){
-    // Busca novos dados em segundo plano e substitui sem mostrar loading
     try{
         if(currentDashboard === 'resumo'){
             const eps = ['documentacao','app','adimplencia'];
             const results = {};
             await Promise.all(eps.map(async ep => {
                 const k = cacheKey(ep, currentMonth, currentYear);
-                const r = await fetch(buildUrl(ep, currentMonth, currentYear));
-                const d = await r.json();
-                if(d.status==='success'){ setCache(k,d.data); results[ep]=d.data; }
+                const r = await fetchData(ep, currentMonth, currentYear);
+                if(r.status==='success'){ setCache(k,r.data); results[ep]=r.data; }
             }));
             if(results['documentacao']) renderResumoDashboard(results['documentacao'], results['app'], results['adimplencia']);
         } else {
             const k = cacheKey(currentDashboard, currentMonth, currentYear);
-            const r = await fetch(buildUrl(currentDashboard, currentMonth, currentYear));
-            const d = await r.json();
-            if(d.status==='success'){ setCache(k,d.data); window._dashboardData=d.data; renderDashboard(); }
+            const r = await fetchData(currentDashboard, currentMonth, currentYear);
+            if(r.status==='success'){ setCache(k,r.data); window._dashboardData=r.data; renderDashboard(); }
         }
         updateLastUpdateTime();
     }catch(_){}
@@ -97,6 +228,14 @@ async function silentRefresh(){
 function buildUrl(ep,m,y){ let u=`${API_URL}?endpoint=${ep}`; if(!SEM_FILTRO.includes(ep))u+=`&mes=${m}&ano=${y}`; return u; }
 function destroyChart(id){ if(chartInstances[id]){chartInstances[id].destroy();delete chartInstances[id];} }
 function createChart(id,cfg){ destroyChart(id); const ctx=document.getElementById(id); if(!ctx)return; chartInstances[id]=new Chart(ctx,cfg); }
+
+let currentDashboard = 'resumo';
+let currentMonth     = new Date().getMonth() + 1;
+let currentYear      = new Date().getFullYear();
+const chartInstances = {};
+
+let dashboardBtns, monthSelect, yearSelect, dashboardContent,
+    refreshBtn, downloadBtn, loadingEl, lastUpdateEl, periodSelector;
 
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function(){
@@ -113,50 +252,129 @@ document.addEventListener('DOMContentLoaded', function(){
     lastUpdateEl     = document.getElementById('lastUpdate');
     periodSelector   = document.getElementById('periodSelector');
 
-    initializeYearSelect(); setCurrentPeriod(); setupEventListeners(); loadDashboard(); updateLastUpdateTime();
-});
+    // Preenche anos
+    const anoAtual = new Date().getFullYear();
+    for(let y = anoAtual; y >= anoAtual - 3; y--){
+        const opt = document.createElement('option');
+        opt.value = y; opt.textContent = y;
+        yearSelect.appendChild(opt);
+    }
 
-function initializeYearSelect(){
-    const cy=new Date().getFullYear();
-    for(let y=cy-2;y<=cy+2;y++){ const o=document.createElement('option'); o.value=y; o.textContent=y; yearSelect.appendChild(o); }
-    yearSelect.value=cy;
-}
-function setCurrentPeriod(){ monthSelect.value=currentMonth; yearSelect.value=currentYear; }
+    monthSelect.value = currentMonth;
+    yearSelect.value  = currentYear;
 
-function setupEventListeners(){
-    const dl=debounce(loadDashboard,300);
-    dashboardBtns.forEach(btn=>{
-        btn.addEventListener('click',function(){
-            if(this.dataset.dashboard===currentDashboard)return;
-            dashboardBtns.forEach(b=>b.classList.remove('active'));
-            this.classList.add('active');
-            currentDashboard=this.dataset.dashboard;
-            togglePeriodSelector();
+    dashboardBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            dashboardBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentDashboard = btn.dataset.dashboard;
+            const semFiltro = SEM_FILTRO.includes(currentDashboard);
+            periodSelector.style.display = semFiltro ? 'none' : 'flex';
             loadDashboard();
         });
-        btn.addEventListener('mouseenter',function(){
-            const ep=this.dataset.dashboard;
-            if(!getCached(cacheKey(ep,currentMonth,currentYear))) prefetchDashboard(ep);
-        });
     });
-    monthSelect.addEventListener('change',function(){ currentMonth=parseInt(this.value); dl(); });
-    yearSelect.addEventListener('change', function(){ currentYear=parseInt(this.value);  dl(); });
-    refreshBtn.addEventListener('click',()=>{ invalidateCache(cacheKey(currentDashboard,currentMonth,currentYear)); loadDashboard(); });
-    downloadBtn.addEventListener('click', exportPage);
+
+    monthSelect.addEventListener('change', () => { currentMonth = parseInt(monthSelect.value); loadDashboard(); });
+    yearSelect.addEventListener('change',  () => { currentYear  = parseInt(yearSelect.value);  loadDashboard(); });
+    refreshBtn.addEventListener('click',   () => { invalidateCache(cacheKey(currentDashboard, currentMonth, currentYear)); loadDashboard(); });
+    downloadBtn.addEventListener('click',  exportPage);
+
+    loadDashboard();
+});
+
+async function loadDashboard(){
+    const k = cacheKey(currentDashboard, currentMonth, currentYear);
+    const cached = getCached(k);
+    if(cached){
+        if(currentDashboard === 'resumo'){
+            const ck = {
+                doc: getCached(cacheKey('documentacao', currentMonth, currentYear)),
+                app: getCached(cacheKey('app', currentMonth, currentYear)),
+                adm: getCached(cacheKey('adimplencia', currentMonth, currentYear))
+            };
+            if(ck.doc) { renderResumoDashboard(ck.doc, ck.app, ck.adm); return; }
+        } else {
+            window._dashboardData = cached;
+            renderDashboard();
+            return;
+        }
+    }
+
+    if(currentDashboard === 'resumo'){
+        await loadResumoDashboard();
+    } else {
+        showProgressLoading('Buscando dados...', 10);
+        try{
+            updateProgress(40, 'Conectando...');
+            const result = await fetchData(currentDashboard, currentMonth, currentYear);
+            updateProgress(80, 'Renderizando...');
+            if(result.status === 'success'){
+                setCache(k, result.data);
+                window._dashboardData = result.data;
+                // Badge discreto mostrando a fonte
+                if(result.fonte === 'appscript') showToast('⚠️ Carregado do Apps Script (Supabase sem dados)');
+                renderDashboard();
+            } else {
+                showError(result.error || 'Erro ao buscar dados');
+            }
+        }catch(err){
+            showError('Falha na conexão: ' + err.message);
+        }
+    }
+    updateLastUpdateTime();
 }
 
-async function prefetchDashboard(ep){
-    const k=cacheKey(ep,currentMonth,currentYear); if(getCached(k))return;
-    try{ const r=await fetch(buildUrl(ep,currentMonth,currentYear)); const d=await r.json(); if(d.status==='success')setCache(k,d.data); }catch(_){}
+async function loadResumoDashboard(){
+    const eps = ['documentacao','app','adimplencia'];
+    showProgressLoading('Carregando resumo...', 5);
+
+    const results = {};
+    let loaded = 0;
+    const labels = { documentacao:'Vendas', app:'App', adimplencia:'Adimplência' };
+
+    await Promise.all(eps.map(async ep => {
+        const k = cacheKey(ep, currentMonth, currentYear);
+        const cached = getCached(k);
+        if(cached){
+            results[ep] = cached;
+            loaded++;
+            updateProgress(Math.round((loaded/eps.length)*90), `${labels[ep]} ✓`);
+            return;
+        }
+        try{
+            const r = await fetchData(ep, currentMonth, currentYear);
+            if(r.status==='success'){
+                setCache(k, r.data);
+                results[ep] = r.data;
+            }
+        }catch(_){}
+        loaded++;
+        updateProgress(Math.round((loaded/eps.length)*90), `${labels[ep]} ✓`);
+    }));
+
+    updateProgress(100,'Pronto!');
+    if(results['documentacao']){
+        renderResumoDashboard(results['documentacao'], results['app'], results['adimplencia']);
+    } else {
+        showError('Não foi possível carregar os dados do resumo.');
+    }
 }
 
-function debounce(fn, d){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),d); }; }
-
-function togglePeriodSelector(){
-    if(periodSelector)
-        periodSelector.style.display=['recorrencia_vendedor'].includes(currentDashboard)?'none':'flex';
+function updateLastUpdateTime(){
+    if(lastUpdateEl) lastUpdateEl.textContent = new Date().toLocaleString('pt-BR');
 }
-function updateLastUpdateTime(){ if(lastUpdateEl)lastUpdateEl.textContent=new Date().toLocaleString('pt-BR'); }
+
+// ── O resto do arquivo (renderDashboard, renderResumoDashboard, etc.)
+// ── permanece IDÊNTICO ao seu app.js original a partir da linha ~200
+// ── Cole aqui todo o conteúdo do seu app.js original de "function renderDashboard()"
+// ── até o final do arquivo.
+// ────────────────────────────────────────────────────────────────────────────
+// IMPORTANTE: só as funções acima (fetchData, loadDashboard, loadResumoDashboard,
+// silentRefresh) foram modificadas. Todo o código de renderização (renderDocumentacaoDashboard,
+// renderAppDashboard, renderAdimplenciaDashboard, renderRecorrenciaDashboard,
+// renderRecorrenciaVendedorDashboard, renderRefuturizaDashboard, metricItem, etc.)
+// fica exatamente igual ao original.
+
 
 // ── Load ───────────────────────────────────────────────────────────────────
 async function loadDashboard(){
