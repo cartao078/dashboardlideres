@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard V20.3 - CDT CEILÂNDIA</title>
+    <title>Dashboard V20.10 - CDT CEILÂNDIA</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
     <link rel="stylesheet" href="styles.css">
@@ -15,8 +15,8 @@
             <div class="logo">
                 <i class="fas fa-chart-line"></i>
                 <div class="logo-text">
-                    <h1>Dashboard V20.3 - CDT CEILÂNDIA</h1>
-                    <p>Monitoramento completo de desempenho - 5 dashboards integrados</p>
+                    <h1>Dashboard V20.10 — CDT CEILÂNDIA</h1>
+                    <p>Monitoramento completo de desempenho — 6 dashboards integrados</p>
                 </div>
             </div>
             <div class="controls">
@@ -43,13 +43,17 @@
             <button class="dashboard-btn" data-dashboard="recorrencia">
                 <i class="fas fa-redo"></i> Recorrência
             </button>
+            <!-- NOVO: Botão Recorrência Vendedor -->
+            <button class="dashboard-btn" data-dashboard="recorrencia_vendedor">
+                <i class="fas fa-handshake"></i> Rec. Vendedor
+            </button>
             <button class="dashboard-btn" data-dashboard="refuturiza">
                 <i class="fas fa-book"></i> Refuturiza
             </button>
         </div>
 
-        <!-- Period Selector -->
-        <div class="period-selector">
+        <!-- Period Selector (oculto para dashboards sem filtro de mês) -->
+        <div class="period-selector" id="periodSelector">
             <div class="select-group">
                 <label for="monthSelect"><i class="far fa-calendar-alt"></i> Mês</label>
                 <select id="monthSelect">
@@ -70,14 +74,14 @@
             <div class="select-group">
                 <label for="yearSelect"><i class="far fa-calendar"></i> Ano</label>
                 <select id="yearSelect">
-                    <!-- Years will be populated by JavaScript -->
+                    <!-- Populado via JavaScript -->
                 </select>
             </div>
         </div>
 
         <!-- Dashboard Content -->
         <div class="dashboard-content" id="dashboardContent">
-            <div class="loading" id="loading">
+            <div class="loading" id="loading" style="display:flex;">
                 <div class="spinner"></div>
                 <p>Carregando dados do dashboard...</p>
             </div>
@@ -85,7 +89,7 @@
 
         <!-- Footer -->
         <div class="footer">
-            <p>Sistema Dashboard V20.3 | API Integrada com Google Apps Script | Última atualização: <span id="lastUpdate"></span></p>
+            <p>Sistema Dashboard V20.10 | API Integrada com Google Apps Script | Última atualização: <span id="lastUpdate"></span></p>
         </div>
     </div>
 
