@@ -861,14 +861,51 @@ function updateLastUpdateTime() {
 }
 
 // ── Export ─────────────────────────────────────────────────────────────────
-function exportPage() {
-    const originalTitle = document.title;
-    document.title = `Dashboard ${currentDashboard.toUpperCase()} - ${getMonthName(currentMonth)} ${currentYear}`;
-    const toHide = document.querySelectorAll('.dashboard-selector, .period-selector, .btn');
-    toHide.forEach(el => el.style.display = 'none');
-    window.print();
-    toHide.forEach(el => el.style.display = '');
-    document.title = originalTitle;
+async function exportPage() {
+    const btn = document.getElementById('downloadBtn');
+    const originalHtml = btn.innerHTML;
+
+    // Feedback visual no botão
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando imagem...';
+    btn.disabled = true;
+
+    try {
+        const container = document.querySelector('.container');
+
+        const canvas = await html2canvas(container, {
+            scale: 2,              // resolução 2x — boa para WhatsApp/grupos
+            useCORS: true,
+            backgroundColor: '#ffffff',
+            scrollX: 0,
+            scrollY: -window.scrollY,
+            windowWidth: container.scrollWidth,
+            windowHeight: container.scrollHeight,
+            onclone: (doc) => {
+                // Garante que o conteúdo completo aparece na captura
+                doc.querySelector('.dashboard-content').style.overflow = 'visible';
+            }
+        });
+
+        // Nome do arquivo com aba e período
+        const nomeDashboard = currentDashboard.toUpperCase().replace('_', '-');
+        const periodo = ['recorrencia', 'recorrencia_vendedor'].includes(currentDashboard)
+            ? ''
+            : `_${getMonthName(currentMonth)}-${currentYear}`;
+        const filename = `Dashboard_${nomeDashboard}${periodo}.png`;
+
+        // Download automático
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+
+    } catch (err) {
+        console.error('Erro ao gerar imagem:', err);
+        alert('Erro ao gerar imagem. Tente novamente.');
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+    }
 }
 
 function getMonthName(month) {
