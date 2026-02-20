@@ -1,34 +1,69 @@
 // ============================================================================
-// DASHBOARD V20.10 - app.js CORRIGIDO
-// CORREÇÕES:
-// 1. Adicionado suporte ao endpoint 'recorrencia_vendedor' (botão + render)
-// 2. Corrigida condição de envio de mes/ano (excluir recorrencia E recorrencia_vendedor)
-// 3. Corrigido showLoading() para não remover o elemento do DOM
-// 4. Adicionada função renderRecorrenciaVendedorDashboard() completa
+// DASHBOARD V20.10 - app.js OTIMIZADO
+// MELHORIAS DE PERFORMANCE:
+// 1. Cache por endpoint/mês/ano — evita re-buscar dados já carregados
+// 2. Prefetch da próxima aba ao passar o mouse (hoverfetch)
+// 3. Debounce nos seletores de mês/ano
+// 4. Indicador de origem dos dados (cache vs. rede)
 // ============================================================================
 
 const API_URL = 'https://script.google.com/macros/s/AKfycby7E_l1q-sgkJV9oPYIdsOwjF3rJUnNjPwzSrf-jOhCwTRbk5NNLPtdF9S2320ngiI_Hw/exec';
 
-// State
+// ── State ──────────────────────────────────────────────────────────────────
 let currentDashboard = 'documentacao';
-let currentMonth = new Date().getMonth() + 1;
-let currentYear = new Date().getFullYear();
-let dashboardData = {};
+let currentMonth     = new Date().getMonth() + 1;
+let currentYear      = new Date().getFullYear();
 
-// DOM Elements (inicializados após DOMContentLoaded)
+// Cache: chave = "endpoint:mes:ano"  →  { data, timestamp }
+const CACHE       = new Map();
+const CACHE_TTL   = 5 * 60 * 1000; // 5 minutos
+
+// ── DOM refs ───────────────────────────────────────────────────────────────
 let dashboardBtns, monthSelect, yearSelect, dashboardContent,
     refreshBtn, downloadBtn, loadingEl, lastUpdateEl, periodSelector;
 
+// ── Debounce helper ────────────────────────────────────────────────────────
+function debounce(fn, delay) {
+    let t;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); };
+}
+
+// ── Cache helpers ──────────────────────────────────────────────────────────
+function cacheKey(endpoint, mes, ano) {
+    const semFiltro = ['recorrencia', 'recorrencia_vendedor'];
+    return semFiltro.includes(endpoint) ? endpoint : `${endpoint}:${mes}:${ano}`;
+}
+
+function getCached(key) {
+    const entry = CACHE.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > CACHE_TTL) { CACHE.delete(key); return null; }
+    return entry.data;
+}
+
+function setCache(key, data) {
+    CACHE.set(key, { data, timestamp: Date.now() });
+}
+
+// ── Build URL ──────────────────────────────────────────────────────────────
+function buildUrl(endpoint, mes, ano) {
+    const semFiltro = ['recorrencia', 'recorrencia_vendedor'];
+    let url = `${API_URL}?endpoint=${endpoint}`;
+    if (!semFiltro.includes(endpoint)) url += `&mes=${mes}&ano=${ano}`;
+    return url;
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function () {
-    dashboardBtns   = document.querySelectorAll('.dashboard-btn');
-    monthSelect     = document.getElementById('monthSelect');
-    yearSelect      = document.getElementById('yearSelect');
-    dashboardContent= document.getElementById('dashboardContent');
-    refreshBtn      = document.getElementById('refreshBtn');
-    downloadBtn     = document.getElementById('downloadBtn');
-    loadingEl       = document.getElementById('loading');
-    lastUpdateEl    = document.getElementById('lastUpdate');
-    periodSelector  = document.getElementById('periodSelector');
+    dashboardBtns    = document.querySelectorAll('.dashboard-btn');
+    monthSelect      = document.getElementById('monthSelect');
+    yearSelect       = document.getElementById('yearSelect');
+    dashboardContent = document.getElementById('dashboardContent');
+    refreshBtn       = document.getElementById('refreshBtn');
+    downloadBtn      = document.getElementById('downloadBtn');
+    loadingEl        = document.getElementById('loading');
+    lastUpdateEl     = document.getElementById('lastUpdate');
+    periodSelector   = document.getElementById('periodSelector');
 
     initializeYearSelect();
     setCurrentPeriod();
@@ -38,14 +73,14 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function initializeYearSelect() {
-    const currentYear = new Date().getFullYear();
-    for (let year = currentYear - 2; year <= currentYear + 2; year++) {
+    const cy = new Date().getFullYear();
+    for (let year = cy - 2; year <= cy + 2; year++) {
         const option = document.createElement('option');
         option.value = year;
         option.textContent = year;
         yearSelect.appendChild(option);
     }
-    yearSelect.value = currentYear;
+    yearSelect.value = cy;
 }
 
 function setCurrentPeriod() {
@@ -54,32 +89,60 @@ function setCurrentPeriod() {
 }
 
 function setupEventListeners() {
+    const debouncedLoad = debounce(loadDashboard, 300);
+
     dashboardBtns.forEach(btn => {
         btn.addEventListener('click', function () {
+            if (this.dataset.dashboard === currentDashboard) return; // já na aba
             dashboardBtns.forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             currentDashboard = this.dataset.dashboard;
-            // Ocultar seletor de mês/ano para dashboards sem filtro temporal
             togglePeriodSelector();
             loadDashboard();
+        });
+
+        // Prefetch ao hover
+        btn.addEventListener('mouseenter', function () {
+            const ep  = this.dataset.dashboard;
+            const key = cacheKey(ep, currentMonth, currentYear);
+            if (!getCached(key)) {
+                prefetchDashboard(ep);
+            }
         });
     });
 
     monthSelect.addEventListener('change', function () {
         currentMonth = parseInt(this.value);
-        loadDashboard();
+        debouncedLoad();
     });
 
     yearSelect.addEventListener('change', function () {
         currentYear = parseInt(this.value);
+        debouncedLoad();
+    });
+
+    refreshBtn.addEventListener('click', () => {
+        // Forçar refresh: apagar cache da aba atual
+        const key = cacheKey(currentDashboard, currentMonth, currentYear);
+        CACHE.delete(key);
         loadDashboard();
     });
 
-    refreshBtn.addEventListener('click', loadDashboard);
     downloadBtn.addEventListener('click', exportPage);
 }
 
-// Ocultar o seletor de período para dashboards sem filtro de mês
+// Prefetch silencioso
+async function prefetchDashboard(endpoint) {
+    const key = cacheKey(endpoint, currentMonth, currentYear);
+    if (getCached(key)) return;
+    try {
+        const url  = buildUrl(endpoint, currentMonth, currentYear);
+        const res  = await fetch(url);
+        const data = await res.json();
+        if (data.status === 'success') setCache(key, data.data);
+    } catch (_) { /* silencioso */ }
+}
+
 function togglePeriodSelector() {
     const semFiltro = ['recorrencia_vendedor'];
     if (periodSelector) {
@@ -91,27 +154,29 @@ function updateLastUpdateTime() {
     if (lastUpdateEl) lastUpdateEl.textContent = new Date().toLocaleString('pt-BR');
 }
 
+// ── Main load ──────────────────────────────────────────────────────────────
 async function loadDashboard() {
+    const key    = cacheKey(currentDashboard, currentMonth, currentYear);
+    const cached = getCached(key);
+
+    if (cached) {
+        // Dados em cache — renderiza imediatamente sem spinner
+        renderDashboardData(cached);
+        updateLastUpdateTime();
+        return;
+    }
+
     showLoading();
     updateLastUpdateTime();
 
     try {
-        // Dashboards que NÃO usam filtro de mês/ano
-        const semFiltroTemporal = ['recorrencia', 'recorrencia_vendedor'];
-
-        let url = `${API_URL}?endpoint=${currentDashboard}`;
-        if (!semFiltroTemporal.includes(currentDashboard)) {
-            url += `&mes=${currentMonth}&ano=${currentYear}`;
-        }
-
-        console.log('Fetching:', url);
+        const url      = buildUrl(currentDashboard, currentMonth, currentYear);
         const response = await fetch(url);
-        const data = await response.json();
-        console.log('API Response:', data);
+        const data     = await response.json();
 
         if (data.status === 'success') {
-            dashboardData = data.data;
-            renderDashboard();
+            setCache(key, data.data);
+            renderDashboardData(data.data);
         } else {
             showError(data.error || 'Erro ao carregar dados');
         }
@@ -121,25 +186,32 @@ async function loadDashboard() {
     }
 }
 
+function renderDashboardData(data) {
+    // Injetar no estado global para funções de render
+    window._dashboardData = data;
+    renderDashboard();
+}
+
+// ── Render router ──────────────────────────────────────────────────────────
 function renderDashboard() {
     hideLoading();
+    const data = window._dashboardData;
 
     switch (currentDashboard) {
-        case 'documentacao':         renderDocumentacaoDashboard();        break;
-        case 'app':                  renderAppDashboard();                 break;
-        case 'adimplencia':          renderAdimplenciaDashboard();         break;
-        case 'recorrencia':          renderRecorrenciaDashboard();         break;
-        case 'recorrencia_vendedor': renderRecorrenciaVendedorDashboard(); break;
-        case 'refuturiza':           renderRefuturizaDashboard();          break;
-        default:
-            showError('Dashboard não encontrado: ' + currentDashboard);
+        case 'documentacao':         renderDocumentacaoDashboard(data);        break;
+        case 'app':                  renderAppDashboard(data);                 break;
+        case 'adimplencia':          renderAdimplenciaDashboard(data);         break;
+        case 'recorrencia':          renderRecorrenciaDashboard(data);         break;
+        case 'recorrencia_vendedor': renderRecorrenciaVendedorDashboard(data); break;
+        case 'refuturiza':           renderRefuturizaDashboard(data);          break;
+        default: showError('Dashboard não encontrado: ' + currentDashboard);
     }
 }
 
 // ============================================================================
-// DASHBOARD: DOCUMENTAÇÃO
+// DASHBOARD: DOCUMENTAÇÃO / VENDAS
 // ============================================================================
-function renderDocumentacaoDashboard() {
+function renderDocumentacaoDashboard(dashboardData) {
     const { geral, vendasLoja, vendasWeb, consultores, mes, ano } = dashboardData;
 
     const percentGeral = calcPercent(geral.aprovados, geral.total);
@@ -225,7 +297,7 @@ function cardPrincipalDoc(titulo, icon, d, pct) {
 // ============================================================================
 // DASHBOARD: APP
 // ============================================================================
-function renderAppDashboard() {
+function renderAppDashboard(dashboardData) {
     const { geral, appLoja, appWeb, consultores, consultorasRetencao, mes, ano } = dashboardData;
 
     const percentGeral = calcPercent(geral.sim, geral.total);
@@ -234,7 +306,7 @@ function renderAppDashboard() {
 
     const html = `
         <h2 class="dash-title">
-            <i class="fas fa-mobile-alt" style="color: var(--secondary);"></i>
+            <i class="fas fa-mobile-alt" style="color: var(--teal);"></i>
             Dashboard App — ${mes} ${ano}
         </h2>
 
@@ -254,7 +326,7 @@ function renderAppDashboard() {
                 ${consultorasRetencao.map(c => {
                     const p = calcPercent(c.sim, c.total);
                     return `
-                    <div class="consultant-card" style="border-left:4px solid #f59e0b;">
+                    <div class="consultant-card" style="border-left:3px solid #f59e0b;">
                         <div class="consultant-header">
                             <div class="consultant-name">${c.nome} (RETENÇÃO)</div>
                             <div class="consultant-sector sector-retencao">RETENÇÃO</div>
@@ -271,7 +343,7 @@ function renderAppDashboard() {
             </div>
         </div>` : ''}
 
-        <h3 class="section-title"><i class="fas fa-layer-group" style="color:var(--secondary);"></i> Desempenho por Setor</h3>
+        <h3 class="section-title"><i class="fas fa-layer-group" style="color:var(--teal);"></i> Desempenho por Setor</h3>
         ${renderAppBySector(consultores)}
     `;
     dashboardContent.innerHTML = html;
@@ -342,7 +414,7 @@ function renderAppBySector(consultores) {
 // ============================================================================
 // DASHBOARD: ADIMPLÊNCIA
 // ============================================================================
-function renderAdimplenciaDashboard() {
+function renderAdimplenciaDashboard(dashboardData) {
     const { geral, consultores, mes, ano } = dashboardData;
 
     const html = `
@@ -351,7 +423,7 @@ function renderAdimplenciaDashboard() {
             Dashboard Adimplência — ${mes} ${ano}
         </h2>
 
-        <div class="card card-adim" style="max-width:600px;margin:0 auto 40px;">
+        <div class="card card-adim" style="max-width:600px;margin:0 auto 36px;">
             <div class="card-header">
                 <div class="card-title">Adimplência — Total da Loja</div>
                 <div class="card-icon"><i class="fas fa-chart-line"></i></div>
@@ -411,7 +483,7 @@ function renderAdimplenciaDashboard() {
 // ============================================================================
 // DASHBOARD: RECORRÊNCIA
 // ============================================================================
-function renderRecorrenciaDashboard() {
+function renderRecorrenciaDashboard(dashboardData) {
     const { retencao, refiliacao, periodo } = dashboardData;
 
     const html = `
@@ -420,8 +492,8 @@ function renderRecorrenciaDashboard() {
             Dashboard Recorrência — ${periodo.atual}
         </h2>
 
-        <div style="background:#fef3c7;padding:15px;border-radius:10px;margin-bottom:30px;">
-            <p style="margin:0;color:#92400e;font-weight:500;">
+        <div style="background:rgba(245,158,11,0.08);padding:14px 18px;border-radius:12px;margin-bottom:28px;border-left:4px solid var(--warning);">
+            <p style="margin:0;color:#92400e;font-weight:600;font-size:0.9rem;">
                 <i class="fas fa-info-circle"></i>
                 Período atual: ${periodo.atual} | Histórico: ${periodo.historico.join(', ')}
             </p>
@@ -490,32 +562,29 @@ function renderRecorrenciaDashboard() {
 }
 
 // ============================================================================
-// DASHBOARD: RECORRÊNCIA VENDEDOR ← NOVO / CORRIGIDO
+// DASHBOARD: RECORRÊNCIA VENDEDOR
 // ============================================================================
-function renderRecorrenciaVendedorDashboard() {
+function renderRecorrenciaVendedorDashboard(dashboardData) {
     const { geral, consultores, dadosPorSetor, totalConsultores, totalRegistros, mesAtual, anoAtual } = dashboardData;
 
-    if (!geral || !consultores) {
-        showError('Dados de Recorrência Vendedor não encontrados');
-        return;
-    }
+    if (!geral || !consultores) { showError('Dados de Recorrência Vendedor não encontrados'); return; }
 
     const percentGeral = calcPercent(geral.totalOk + geral.totalEmAberto, geral.totalVendasPromocao);
 
     const setores = [
-        { nome: 'VENDAS',     cor: '#1e3a8a', icone: 'fas fa-shopping-cart' },
-        { nome: 'REFILIACAO', cor: '#7c3aed', icone: 'fas fa-user-plus' },
-        { nome: 'RECEPCAO',   cor: '#059669', icone: 'fas fa-headset' },
+        { nome: 'VENDAS',     cor: 'var(--primary)',  icone: 'fas fa-shopping-cart' },
+        { nome: 'REFILIACAO', cor: 'var(--warning)',   icone: 'fas fa-user-plus' },
+        { nome: 'RECEPCAO',   cor: 'var(--teal)',      icone: 'fas fa-headset' },
     ];
 
     const html = `
         <h2 class="dash-title">
-            <i class="fas fa-handshake" style="color:#0d9488;"></i>
+            <i class="fas fa-handshake" style="color:var(--teal);"></i>
             Recorrência Vendedor — Dados Completos
         </h2>
 
-        <div style="background:#e0f2f1;padding:15px;border-radius:10px;margin-bottom:30px;border-left:5px solid #0d9488;">
-            <p style="margin:0;color:#065f46;font-weight:500;">
+        <div style="background:var(--teal-light);padding:14px 18px;border-radius:12px;margin-bottom:28px;border-left:4px solid var(--teal);">
+            <p style="margin:0;color:#065f46;font-weight:600;font-size:0.9rem;">
                 <i class="fas fa-database"></i>
                 Análise de <strong>${totalRegistros || consultores.reduce((s,c)=>s+c.totalVendasPromocao,0)}</strong> registros |
                 <strong>${totalConsultores}</strong> consultores |
@@ -523,11 +592,10 @@ function renderRecorrenciaVendedorDashboard() {
             </p>
         </div>
 
-        <!-- Card Geral -->
-        <div class="card" style="max-width:600px;margin:0 auto 40px;border-top:4px solid #0d9488;">
+        <div class="card" style="max-width:600px;margin:0 auto 36px;border-top:3px solid var(--teal);">
             <div class="card-header">
                 <div class="card-title">📈 Total Geral — Todos os Dados</div>
-                <div class="card-icon" style="background:rgba(13,148,136,0.1);color:#0d9488;">
+                <div class="card-icon" style="background:var(--teal-light);color:var(--teal);">
                     <i class="fas fa-chart-bar"></i>
                 </div>
             </div>
@@ -537,26 +605,22 @@ function renderRecorrenciaVendedorDashboard() {
                 ${metricItem('Em Aberto', geral.totalEmAberto, 'var(--warning)')}
                 ${metricItem('Atraso', geral.totalAtraso, 'var(--danger)')}
                 ${metricItem('Outros', geral.totalOutros||0, 'var(--gray)')}
-                ${metricPercent('% OK + Aberto', percentGeral, '#0d9488')}
+                ${metricPercent('% OK + Aberto', percentGeral)}
             </div>
         </div>
 
-        <!-- Por Setor -->
         ${setores.map(setorInfo => {
-            // Usar filtro direto nos consultores como fallback (mais confiável)
             const lista = consultores.filter(c => c.setor === setorInfo.nome);
             const totSetor = lista.reduce((s,c)=>s+c.totalVendasPromocao,0);
             const okSetor  = lista.reduce((s,c)=>s+(c.totalOk||0)+(c.totalEmAberto||0),0);
             const pctSetor = calcPercent(okSetor, totSetor);
-
             if (lista.length === 0) return '';
-
             return `
-            <div class="sector-card" style="border-top:4px solid ${setorInfo.cor};">
-                <div class="sector-header" style="background:${setorInfo.cor}15;">
+            <div class="sector-card">
+                <div class="sector-header">
                     <div class="sector-title">
                         <i class="${setorInfo.icone}" style="color:${setorInfo.cor};"></i>
-                        <span style="color:${setorInfo.cor};font-weight:700;">${setorInfo.nome}</span>
+                        <span style="color:${setorInfo.cor};">${setorInfo.nome}</span>
                         <span class="sector-count">${lista.length} consultor${lista.length!==1?'es':''}</span>
                     </div>
                     <div class="metric-percent ${getPercentClass(pctSetor)}">${pctSetor}% OK+Aberto</div>
@@ -565,10 +629,10 @@ function renderRecorrenciaVendedorDashboard() {
                     ${lista.sort((a,b)=>b.totalVendasPromocao-a.totalVendasPromocao).map(c => {
                         const p = calcPercent((c.totalOk||0)+(c.totalEmAberto||0), c.totalVendasPromocao);
                         return `
-                        <div class="consultant-card" style="border-left:3px solid ${setorInfo.cor};">
+                        <div class="consultant-card">
                             <div class="consultant-header">
                                 <div class="consultant-name">${c.nome}</div>
-                                <div class="consultant-sector" style="background:${setorInfo.cor}20;color:${setorInfo.cor};">${c.setor}</div>
+                                <div class="consultant-sector ${getSectorClass(c.setor)}">${c.setor}</div>
                             </div>
                             <div class="metric-grid">
                                 ${metricItem('Total Vendas', c.totalVendasPromocao)}
@@ -576,7 +640,7 @@ function renderRecorrenciaVendedorDashboard() {
                                 ${metricItem('Em Aberto', c.totalEmAberto||0, 'var(--warning)')}
                                 ${metricItem('Atraso', c.totalAtraso||0, 'var(--danger)')}
                                 ${metricItem('Outros', c.totalOutros||0, 'var(--gray)')}
-                                ${metricPercent('% OK+Aberto', p, setorInfo.cor)}
+                                ${metricPercent('% OK+Aberto', p)}
                             </div>
                         </div>`;
                     }).join('')}
@@ -584,8 +648,7 @@ function renderRecorrenciaVendedorDashboard() {
             </div>`;
         }).join('')}
 
-        <!-- Resumo Final -->
-        <div class="card" style="margin-top:40px;background:linear-gradient(135deg,#0d9488,#0f766e);color:white;">
+        <div class="card" style="margin-top:36px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;">
             <div class="card-header" style="border-bottom-color:rgba(255,255,255,0.2);">
                 <div class="card-title" style="color:white;">📊 Resumo Final</div>
                 <div class="card-icon" style="background:rgba(255,255,255,0.2);">
@@ -607,23 +670,20 @@ function renderRecorrenciaVendedorDashboard() {
 // ============================================================================
 // DASHBOARD: REFUTURIZA
 // ============================================================================
-function renderRefuturizaDashboard() {
+function renderRefuturizaDashboard(dashboardData) {
     const { geral, consultores, mes, ano } = dashboardData;
 
-    if (!geral || !consultores) {
-        showError('Dados do Refuturiza não encontrados');
-        return;
-    }
+    if (!geral || !consultores) { showError('Dados do Refuturiza não encontrados'); return; }
 
     const percentGeral = calcPercent(geral.comLigacao, geral.total);
 
     const html = `
         <h2 class="dash-title">
-            <i class="fas fa-book" style="color:#0ea5e9;"></i>
+            <i class="fas fa-book" style="color:var(--info);"></i>
             Dashboard Refuturiza — ${mes} ${ano}
         </h2>
 
-        <div class="card card-refut" style="max-width:500px;margin:0 auto 40px;">
+        <div class="card card-refut" style="max-width:500px;margin:0 auto 36px;">
             <div class="card-header">
                 <div class="card-title">Refuturiza — Total da Loja</div>
                 <div class="card-icon"><i class="fas fa-book-open"></i></div>
@@ -638,7 +698,7 @@ function renderRefuturizaDashboard() {
         </div>
 
         ${consultores && consultores.length > 0 ? `
-        <h3 class="section-title"><i class="fas fa-users" style="color:#0ea5e9;"></i> Desempenho por Consultor (${consultores.length})</h3>
+        <h3 class="section-title"><i class="fas fa-users" style="color:var(--info);"></i> Desempenho por Consultor (${consultores.length})</h3>
         <div class="consultant-grid">
             ${consultores.map(c => {
                 const p = calcPercent(c.comLigacao||0, c.total);
@@ -646,7 +706,7 @@ function renderRefuturizaDashboard() {
                 <div class="consultant-card">
                     <div class="consultant-header">
                         <div class="consultant-name">${c.nome}</div>
-                        <div class="consultant-sector" style="background:rgba(14,165,233,0.1);color:#0ea5e9;">REFUTURIZA</div>
+                        <div class="consultant-sector" style="background:rgba(14,165,233,0.1);color:var(--info);">REFUTURIZA</div>
                     </div>
                     <div class="metric-grid">
                         ${metricItem('Total', c.total||0)}
@@ -658,7 +718,7 @@ function renderRefuturizaDashboard() {
                 </div>`;
             }).join('')}
         </div>
-        <div class="card" style="margin-top:40px;background:linear-gradient(90deg,#0ea5e9,#3b82f6);color:white;">
+        <div class="card" style="margin-top:36px;background:linear-gradient(90deg,var(--info),#3b82f6);color:white;">
             <div class="card-header" style="border-bottom-color:rgba(255,255,255,0.2);">
                 <div class="card-title" style="color:white;">📊 Resumo Final</div>
                 <div class="card-icon" style="background:rgba(255,255,255,0.2);"><i class="fas fa-graduation-cap"></i></div>
@@ -670,8 +730,8 @@ function renderRefuturizaDashboard() {
                 ${metricItemWhite('Taxa de Contato', percentGeral+'%')}
             </div>
         </div>` : `
-        <div class="error-message" style="text-align:center;padding:40px;">
-            <i class="fas fa-info-circle" style="font-size:3rem;margin-bottom:20px;color:var(--gray);"></i>
+        <div class="error-message" style="text-align:center;padding:40px;background:var(--gray-light);border:none;color:var(--text-muted);">
+            <i class="fas fa-info-circle" style="font-size:2.5rem;margin-bottom:16px;display:block;"></i>
             <h3>Nenhum consultor com cursos neste período</h3>
             <p>Não foram encontrados dados para ${mes} ${ano}.</p>
         </div>`}
@@ -680,7 +740,7 @@ function renderRefuturizaDashboard() {
 }
 
 // ============================================================================
-// HELPERS DE RENDERIZAÇÃO
+// HELPERS
 // ============================================================================
 function metricItem(label, value, color) {
     const style = color ? `style="color:${color};"` : '';
@@ -691,7 +751,7 @@ function metricItem(label, value, color) {
     </div>`;
 }
 
-function metricPercent(label, value, bgColor) {
+function metricPercent(label, value) {
     const cls = getPercentClass(typeof value === 'number' ? value : parseInt(value));
     return `
     <div class="metric-item">
@@ -703,7 +763,7 @@ function metricPercent(label, value, bgColor) {
 function metricItemWhite(label, value) {
     return `
     <div class="metric-item">
-        <div class="metric-label" style="color:rgba(255,255,255,0.8);">${label}</div>
+        <div class="metric-label" style="color:rgba(255,255,255,0.75);">${label}</div>
         <div class="metric-value" style="color:white;">${value}</div>
     </div>`;
 }
@@ -725,8 +785,7 @@ function groupBySector(consultores) {
 
 function sortSectors(keys, order) {
     return keys.sort((a, b) => {
-        const ia = order.indexOf(a);
-        const ib = order.indexOf(b);
+        const ia = order.indexOf(a), ib = order.indexOf(b);
         if (ia === -1 && ib === -1) return a.localeCompare(b);
         if (ia === -1) return 1;
         if (ib === -1) return -1;
@@ -771,15 +830,10 @@ function getSectorIcon(sector) {
     }
 }
 
-// ============================================================================
-// LOADING / ERROR
-// ============================================================================
+// ── Loading / Error ────────────────────────────────────────────────────────
 function showLoading() {
-    // CORRIGIDO: não usa innerHTML='' nem appendChild (evita perda do elemento do DOM)
     if (loadingEl) loadingEl.style.display = 'flex';
-    // Limpar apenas o conteúdo que não seja o loader
-    const children = Array.from(dashboardContent.children);
-    children.forEach(child => {
+    Array.from(dashboardContent.children).forEach(child => {
         if (child !== loadingEl) child.remove();
     });
 }
@@ -792,19 +846,21 @@ function showError(message) {
     hideLoading();
     dashboardContent.innerHTML = `
         <div class="error-message">
-            <i class="fas fa-exclamation-triangle" style="font-size:2rem;margin-bottom:15px;"></i>
-            <h3 style="margin-bottom:10px;">Erro ao carregar dados</h3>
+            <i class="fas fa-exclamation-triangle" style="font-size:2rem;margin-bottom:12px;display:block;"></i>
+            <h3 style="margin-bottom:8px;">Erro ao carregar dados</h3>
             <p>${message}</p>
-            <button class="btn btn-primary" onclick="loadDashboard()" style="margin-top:15px;">
+            <button class="btn btn-success" onclick="loadDashboard()" style="margin-top:16px;background:var(--danger);color:white;">
                 <i class="fas fa-redo"></i> Tentar Novamente
             </button>
         </div>
     `;
 }
 
-// ============================================================================
-// EXPORT
-// ============================================================================
+function updateLastUpdateTime() {
+    if (lastUpdateEl) lastUpdateEl.textContent = new Date().toLocaleString('pt-BR');
+}
+
+// ── Export ─────────────────────────────────────────────────────────────────
 function exportPage() {
     const originalTitle = document.title;
     document.title = `Dashboard ${currentDashboard.toUpperCase()} - ${getMonthName(currentMonth)} ${currentYear}`;
