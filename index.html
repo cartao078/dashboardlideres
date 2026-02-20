@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard V20.10 - CDT CEILÂNDIA</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -13,9 +12,10 @@
         <!-- Header -->
         <div class="header">
             <div class="logo">
-                <i class="fas fa-chart-line"></i>
+                <img class="logo-img" src="logo.png" alt="Cartão de Todos">
+                <div class="logo-divider"></div>
                 <div class="logo-text">
-                    <h1>Dashboard V20.10 — CDT CEILÂNDIA</h1>
+                    <h1>Dashboard CDT CEILÂNDIA &mdash; V20.10</h1>
                     <p>Monitoramento completo de desempenho — 6 dashboards integrados</p>
                 </div>
             </div>
@@ -43,7 +43,6 @@
             <button class="dashboard-btn" data-dashboard="recorrencia">
                 <i class="fas fa-redo"></i> Recorrência
             </button>
-            <!-- NOVO: Botão Recorrência Vendedor -->
             <button class="dashboard-btn" data-dashboard="recorrencia_vendedor">
                 <i class="fas fa-handshake"></i> Rec. Vendedor
             </button>
@@ -52,7 +51,7 @@
             </button>
         </div>
 
-        <!-- Period Selector (oculto para dashboards sem filtro de mês) -->
+        <!-- Period Selector -->
         <div class="period-selector" id="periodSelector">
             <div class="select-group">
                 <label for="monthSelect"><i class="far fa-calendar-alt"></i> Mês</label>
@@ -73,9 +72,7 @@
             </div>
             <div class="select-group">
                 <label for="yearSelect"><i class="far fa-calendar"></i> Ano</label>
-                <select id="yearSelect">
-                    <!-- Populado via JavaScript -->
-                </select>
+                <select id="yearSelect"></select>
             </div>
         </div>
 
@@ -89,7 +86,7 @@
 
         <!-- Footer -->
         <div class="footer">
-            <p>Sistema Dashboard V20.10 | API Integrada com Google Apps Script | Última atualização: <span id="lastUpdate"></span></p>
+            <p>Dashboard V20.10 | CDT CEILÂNDIA | API Google Apps Script | Última atualização: <span id="lastUpdate"></span></p>
         </div>
     </div>
 
