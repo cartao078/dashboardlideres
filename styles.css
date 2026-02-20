@@ -105,11 +105,19 @@ body {
     gap: 18px;
 }
 
+.logo-img-wrapper {
+    background: white;
+    border-radius: 10px;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
 .logo-img {
-    height: 48px;
+    height: 38px;
     width: auto;
-    mix-blend-mode: multiply;
-    background: transparent;
+    display: block;
 }
 
 .logo-divider {
