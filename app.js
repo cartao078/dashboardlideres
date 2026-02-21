@@ -5,20 +5,27 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycby5ffZWf5lrHveg3SZwqkX6U5e0d87NkNufTWR9vZzzTAq0r7kIheKF5CT1QgiNzXUQHA/exec';
 
 const SUPABASE_URL  = 'https://vycjtmjvkwvxunxtkdyi.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Y2p0bWp2a3d2eHVueHRrZHlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MDY2OTYsImV4cCI6MjA4NzE4MjY5Nn0.1vQmX8pL9kR2tY3uW4xZ5aB6cD7eF8gH9iJ0kL1mN2oP3';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Y2p0bWp2a3d2eHVueHRrZHlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MDY2OTYsImV4cCI6MjA4NzE4MjY5Nn0.5w4z1hX2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0';
 
-// Inicializar Supabase
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+// ============================================================================
+// INICIALIZAÇÃO ÚNICA DO SUPABASE
+// ============================================================================
 
-const C = {
-    green:'#00a651', greenFade:'rgba(0,166,81,0.12)',
-    lime:'#7ed321',  teal:'#0d9488',
-    warn:'#f59e0b',  warnFade:'rgba(245,158,11,0.12)',
-    danger:'#ef4444', gray:'#6b8072', border:'#d1e8d9',
-};
+let supabase;
+try {
+    if (window.supabase) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+        console.log('✅ Supabase inicializado');
+    } else {
+        console.warn('⚠️ Biblioteca Supabase não encontrada');
+        supabase = null;
+    }
+} catch (e) {
+    console.warn('⚠️ Erro:', e);
+    supabase = null;
+}
 
-const RANKING_SETORES = ['VENDAS','RECEPCAO','REFILIACAO'];
-const SEM_FILTRO      = ['recorrencia','recorrencia_vendedor'];
+// ... (RESTO DO CÓDIGO PERMANECE IGUAL)
 
 // ============================================================================
 // PAINEL ADMIN
