@@ -4,7 +4,7 @@
 
 const API_URL = 'https://script.google.com/macros/s/AKfycby5ffZWf5lrHveg3SZwqkX6U5e0d87NkNufTWR9vZzzTAq0r7kIheKF5CT1QgiNzXUQHA/exec';
 
-const SUPABASE_URL  = 'https://vycjtmjvkwvxunxtkdyi.supabaseClient.co';
+const SUPABASE_URL  = 'https://vycjtmjvkwvxunxtkdyi.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_qNWYXG_mPokAp-5C08AM0Q_p-HdsjYS';
 
 // ============================================================================
