@@ -2,7 +2,7 @@
 // DASHBOARD V21.0 - app.js — COM SUPABASE E PAINEL ADMIN
 // ============================================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbyahgVKkArnH9wtVnTexFRuKgRlAcacKS6EwJzxsdi18jdsM0ZCJDdDaASjsdcXyriWOQ/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycby5ffZWf5lrHveg3SZwqkX6U5e0d87NkNufTWR9vZzzTAq0r7kIheKF5CT1QgiNzXUQHA/exec';
 
 const SUPABASE_URL  = 'https://vycjtmjvkwvxunxtkdyi.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Y2p0bWp2a3d2eHVueHRrZHlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MDY2OTYsImV4cCI6MjA4NzE4MjY5Nn0.wOoAZpA1i-320E8Rc-Ry6nk0KYsedFXb3aS4gkmbjHU';
@@ -94,20 +94,48 @@ async function fetchData(endpoint, mes, ano) {
     try {
         const resp = await fetch(url);
         if (!resp.ok) {
-            console.error('❌ HTTP Error:', resp.status, resp.statusText);
-            return { status: 'error', error: `HTTP ${resp.status}: ${resp.statusText}` };
+            const errMsg = `HTTP ${resp.status}: ${resp.statusText}`;
+            console.error('❌ HTTP Error:', errMsg);
+            showDiagnostic('API retornou erro: ' + errMsg, url);
+            return { status: 'error', error: errMsg };
         }
-        const json = await resp.json();
-        console.log('✅ Response:', endpoint, json.status);
+        const text = await resp.text();
+        console.log('📄 Raw response (' + endpoint + '):', text.substring(0, 300));
+        
+        let json;
+        try {
+            json = JSON.parse(text);
+        } catch(parseErr) {
+            console.error('❌ JSON inválido:', text.substring(0, 500));
+            showDiagnostic('API retornou HTML em vez de JSON. A Web App não foi reimplantada.', url);
+            return { status: 'error', error: 'API retornou HTML (não foi reimplantada). Acesse: Implantar → Gerenciar implantações → Nova versão.' };
+        }
+        
+        console.log('✅ Response:', endpoint, json.status, json.data ? '(tem dados)' : '(sem dados)');
         return json;
     } catch (error) {
-        console.error('❌ Fetch error:', error);
-        // Erro de CORS ou rede
-        if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
-            return { status: 'error', error: 'Erro de CORS/rede. Verifique se a Web App foi reimplantada como "Qualquer pessoa" e se a URL da API está correta.' };
-        }
-        return { status: 'error', error: error.message };
+        console.error('❌ Fetch error:', error.message);
+        showDiagnostic('Erro de rede: ' + error.message, url);
+        return { status: 'error', error: 'Erro de rede/CORS: ' + error.message };
     }
+}
+
+function showDiagnostic(msg, url) {
+    const el = document.getElementById('dashboardContent');
+    if (!el) return;
+    // Só mostra se ainda não tem conteúdo útil
+    if (el.querySelector('.diag-box')) return;
+    const div = document.createElement('div');
+    div.className = 'diag-box';
+    div.style.cssText = 'background:#fff3cd;border:1px solid #ffc107;border-radius:12px;padding:20px;margin:20px;font-family:monospace;';
+    div.innerHTML = `<strong>⚠️ Diagnóstico</strong><br><br>
+        <b>Erro:</b> ${msg}<br><br>
+        <b>URL da API:</b><br><small>${url}</small><br><br>
+        <b>O que fazer:</b><br>
+        1. No Apps Script: Implantar → Gerenciar implantações → ✏️ Editar → Nova versão → Implantar<br>
+        2. Confirme que o acesso é "Qualquer pessoa"<br>
+        3. Clique em <b>Atualizar Dados</b> aqui no dashboard`;
+    el.prepend(div);
 }
 
 // ============================================================================
