@@ -18,11 +18,11 @@ try {
         console.log('✅ Supabase inicializado');
     } else {
         console.warn('⚠️ Biblioteca Supabase não encontrada');
-        supabase = null;
+        supabaseClient = null;
     }
 } catch (e) {
     console.warn('⚠️ Erro ao inicializar Supabase:', e);
-    supabase = null;
+    supabaseClient = null;
 }
 
 // ============================================================================
