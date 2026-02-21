@@ -1195,3 +1195,77 @@ select:focus {
     opacity: 1;
     transform: translateY(0);
 }
+
+/* ============================================================
+   ESTILOS DO PAINEL ADMIN
+   ============================================================ */
+
+.btn-admin {
+    padding: 10px 20px;
+    border-radius: 10px;
+    background: #7c3aed;
+    color: white;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.25s ease;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.85rem;
+}
+
+.btn-admin:hover {
+    background: #6d28d9;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(124,58,237,0.4);
+}
+
+#adminPanel {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    overflow: hidden;
+    margin: 0 36px 20px 36px;
+}
+
+.admin-header {
+    background: linear-gradient(105deg, #7c3aed, #6d28d9);
+    color: white;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.admin-header h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.admin-header .btn-close {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    line-height: 1;
+    padding: 0 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.admin-header .btn-close:hover {
+    background: rgba(255,255,255,0.3);
+}
+
+#adminContent {
+    min-height: 600px;
+    background: #f8faf8;
+}
