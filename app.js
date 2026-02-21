@@ -93,8 +93,25 @@ async function fetchData(endpoint, mes, ano) {
     
     try {
         const resp = await fetch(url);
+        if (!resp.ok) {
+            return { status: 'error', error: `HTTP ${resp.status}: ${resp.statusText}` };
+        }
         const json = await resp.json();
-        return json;
+        
+        // ✅ CORREÇÃO: normalizar resposta da API
+        // Caso 1: { status:'success', data:{...} }  → já no formato esperado
+        // Caso 2: API retorna o objeto direto sem wrapper → envolve no formato esperado
+        if (json && typeof json === 'object') {
+            if (json.status === 'success' || json.status === 'error') {
+                return json; // já no formato correto
+            }
+            // API retornou objeto direto (sem wrapper status/data)
+            // Trata como sucesso com os dados no campo data
+            console.log(`📦 API [${endpoint}] retornou sem wrapper — normalizando`);
+            return { status: 'success', data: json };
+        }
+        
+        return { status: 'error', error: 'Resposta inválida da API' };
     } catch (error) {
         console.error('Erro na requisição:', error);
         return { status: 'error', error: error.message };
@@ -241,6 +258,11 @@ function renderDashboard(){
         return;
     }
     
+    // ✅ CORREÇÃO: proteção contra estrutura inesperada da API
+    // Loga a estrutura para diagnóstico e evita crash com try/catch por aba
+    console.log(`📊 Renderizando [${currentDashboard}]:`, data);
+    
+    try {
     switch(currentDashboard){
         case 'documentacao':
             renderDocumentacaoDashboard(data);
@@ -261,6 +283,15 @@ function renderDashboard(){
             renderRefuturizaDashboard(data);
             break;
     }
+    } catch(renderErr) {
+        // ✅ CORREÇÃO: captura erros de renderização e mostra diagnóstico útil
+        console.error('Erro ao renderizar dashboard:', renderErr);
+        console.error('Dados recebidos:', JSON.stringify(data).substring(0, 500));
+        showError(
+            `Erro ao processar dados: ${renderErr.message}<br>` +
+            `<small style="opacity:0.7;font-size:0.8rem;">Abra o Console (F12) → aba Console para ver a estrutura dos dados retornados pela API</small>`
+        );
+    }
 }
 
 // ============================================================================
@@ -268,10 +299,17 @@ function renderDashboard(){
 // ============================================================================
 
 function renderDocumentacaoDashboard(d){
+    // ✅ CORREÇÃO: verificação defensiva das propriedades esperadas
+    if (!d || !d.geral) {
+        const keys = d ? Object.keys(d).join(', ') : 'null';
+        showError(`Estrutura de dados inesperada para Vendas.<br><small>Campos recebidos: ${keys}</small>`);
+        console.error('Dados Vendas:', d);
+        return;
+    }
     const {geral, vendasLoja, vendasWeb, consultores, mes, ano} = d;
     const pG = calcPercent(geral.aprovados, geral.total);
-    const pL = calcPercent(vendasLoja.aprovados, vendasLoja.total);
-    const pW = calcPercent(vendasWeb.aprovados, vendasWeb.total);
+    const pL = vendasLoja ? calcPercent(vendasLoja.aprovados, vendasLoja.total) : 0;
+    const pW = vendasWeb  ? calcPercent(vendasWeb.aprovados,  vendasWeb.total)  : 0;
     
     const bySector = groupBySector(consultores);
     const order = ['VENDAS','RECEPCAO','REFILIACAO','WEB SITE','TELEVENDAS','OUTROS'];
@@ -1356,9 +1394,12 @@ function toggleAdminPanel() {
     const iframe = document.getElementById('adminFrame');
     
     if (panel.style.display === 'none') {
-        const baseUrl = API_URL.replace('/exec', '');
-        iframe.src = `${baseUrl}?page=admin&t=${Date.now()}`;
+        // ✅ CORREÇÃO: URL correta do admin — mantém /exec e adiciona ?page=admin
+        // Antes: API_URL.replace('/exec','') gerava URL sem /exec → 403
+        const adminUrl = `${API_URL}?page=admin&t=${Date.now()}`;
+        iframe.src = adminUrl;
         panel.style.display = 'block';
+        console.log('🔧 Admin URL:', adminUrl);
     } else {
         panel.style.display = 'none';
         iframe.src = '';
