@@ -5,25 +5,24 @@
 const API_URL = 'https://script.google.com/macros/s/AKfycby5ffZWf5lrHveg3SZwqkX6U5e0d87NkNufTWR9vZzzTAq0r7kIheKF5CT1QgiNzXUQHA/exec';
 
 const SUPABASE_URL  = 'https://vycjtmjvkwvxunxtkdyi.supabase.co';
-const SUPABASE_ANON = 'sb_publishable_qNWYXG_mPokAp-5C08AM0Q_p-HdsjYS';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Y2p0bWp2a3d2eHVueHRrZHlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MDY2OTYsImV4cCI6MjA4NzE4MjY5Nn0.5w4z1hX2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0';
 
 // ============================================================================
 // INICIALIZAÇÃO DO SUPABASE
 // ============================================================================
 
-// ✅ CORREÇÃO: renomeado para supabaseClient — evita conflito com window.supabase (SDK global)
-let supabaseClient;
+let supabase;
 try {
-    if (window.supabase && typeof window.supabase.createClient === 'function') {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+    if (window.supabase) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
         console.log('✅ Supabase inicializado');
     } else {
         console.warn('⚠️ Biblioteca Supabase não encontrada');
-        supabaseClient = null;
+        supabase = null;
     }
 } catch (e) {
     console.warn('⚠️ Erro ao inicializar Supabase:', e);
-    supabaseClient = null;
+    supabase = null;
 }
 
 // ============================================================================
@@ -90,30 +89,23 @@ function buildUrl(ep,m,y){
 
 async function fetchData(endpoint, mes, ano) {
     const url = buildUrl(endpoint, mes, ano);
+    console.log('🔄 Fetching:', url);
     
     try {
         const resp = await fetch(url);
         if (!resp.ok) {
+            console.error('❌ HTTP Error:', resp.status, resp.statusText);
             return { status: 'error', error: `HTTP ${resp.status}: ${resp.statusText}` };
         }
         const json = await resp.json();
-        
-        // ✅ CORREÇÃO: normalizar resposta da API
-        // Caso 1: { status:'success', data:{...} }  → já no formato esperado
-        // Caso 2: API retorna o objeto direto sem wrapper → envolve no formato esperado
-        if (json && typeof json === 'object') {
-            if (json.status === 'success' || json.status === 'error') {
-                return json; // já no formato correto
-            }
-            // API retornou objeto direto (sem wrapper status/data)
-            // Trata como sucesso com os dados no campo data
-            console.log(`📦 API [${endpoint}] retornou sem wrapper — normalizando`);
-            return { status: 'success', data: json };
-        }
-        
-        return { status: 'error', error: 'Resposta inválida da API' };
+        console.log('✅ Response:', endpoint, json.status);
+        return json;
     } catch (error) {
-        console.error('Erro na requisição:', error);
+        console.error('❌ Fetch error:', error);
+        // Erro de CORS ou rede
+        if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+            return { status: 'error', error: 'Erro de CORS/rede. Verifique se a Web App foi reimplantada como "Qualquer pessoa" e se a URL da API está correta.' };
+        }
         return { status: 'error', error: error.message };
     }
 }
@@ -258,11 +250,6 @@ function renderDashboard(){
         return;
     }
     
-    // ✅ CORREÇÃO: proteção contra estrutura inesperada da API
-    // Loga a estrutura para diagnóstico e evita crash com try/catch por aba
-    console.log(`📊 Renderizando [${currentDashboard}]:`, data);
-    
-    try {
     switch(currentDashboard){
         case 'documentacao':
             renderDocumentacaoDashboard(data);
@@ -283,15 +270,6 @@ function renderDashboard(){
             renderRefuturizaDashboard(data);
             break;
     }
-    } catch(renderErr) {
-        // ✅ CORREÇÃO: captura erros de renderização e mostra diagnóstico útil
-        console.error('Erro ao renderizar dashboard:', renderErr);
-        console.error('Dados recebidos:', JSON.stringify(data).substring(0, 500));
-        showError(
-            `Erro ao processar dados: ${renderErr.message}<br>` +
-            `<small style="opacity:0.7;font-size:0.8rem;">Abra o Console (F12) → aba Console para ver a estrutura dos dados retornados pela API</small>`
-        );
-    }
 }
 
 // ============================================================================
@@ -299,40 +277,10 @@ function renderDashboard(){
 // ============================================================================
 
 function renderDocumentacaoDashboard(d){
-    // ✅ CORREÇÃO: verificação defensiva + diagnóstico visual
-    if (!d || !d.geral) {
-        const keys = d ? Object.keys(d).join(', ') : 'null';
-        // Tenta achar 'geral' em subnível (ex: d.data.geral ou d.documentacao.geral)
-        for (const k of (d ? Object.keys(d) : [])) {
-            if (d[k] && typeof d[k] === 'object' && d[k].geral) {
-                console.log(`🔄 Encontrou geral em d.${k} — ajustando`);
-                return renderDocumentacaoDashboard(d[k]);
-            }
-        }
-        const preview = d ? JSON.stringify(d).substring(0, 400) : 'null';
-        dashboardContent.innerHTML = `
-            <div class="error-message" style="text-align:left;max-width:900px;margin:0 auto;">
-                <i class="fas fa-exclamation-triangle" style="font-size:2rem;margin-bottom:12px;display:block;text-align:center;"></i>
-                <h3 style="text-align:center;margin-bottom:12px;">Estrutura de dados inesperada</h3>
-                <p style="margin-bottom:8px;">A API retornou dados mas sem o campo <code>geral</code> esperado.</p>
-                <p style="margin-bottom:8px;"><strong>Campos recebidos:</strong> <code>${keys}</code></p>
-                <details style="margin-top:12px;">
-                    <summary style="cursor:pointer;color:#7c3aed;font-weight:600;">Ver dados completos recebidos</summary>
-                    <pre style="background:#1c2e23;color:#a3e6b4;padding:16px;border-radius:8px;margin-top:8px;overflow:auto;font-size:0.8rem;max-height:300px;">${preview}</pre>
-                </details>
-                <p style="margin-top:12px;font-size:0.85rem;color:#888;">Cole o conteúdo acima aqui e me envie para que eu possa ajustar o código ao formato da sua API.</p>
-                <button class="btn btn-success" onclick="loadDashboard()" style="margin-top:16px;background:var(--danger);color:white">
-                    <i class="fas fa-redo"></i> Tentar Novamente
-                </button>
-            </div>`;
-        console.error('Dados Vendas completo:', d);
-        hideLoading();
-        return;
-    }
     const {geral, vendasLoja, vendasWeb, consultores, mes, ano} = d;
     const pG = calcPercent(geral.aprovados, geral.total);
-    const pL = vendasLoja ? calcPercent(vendasLoja.aprovados, vendasLoja.total) : 0;
-    const pW = vendasWeb  ? calcPercent(vendasWeb.aprovados,  vendasWeb.total)  : 0;
+    const pL = calcPercent(vendasLoja.aprovados, vendasLoja.total);
+    const pW = calcPercent(vendasWeb.aprovados, vendasWeb.total);
     
     const bySector = groupBySector(consultores);
     const order = ['VENDAS','RECEPCAO','REFILIACAO','WEB SITE','TELEVENDAS','OUTROS'];
@@ -1377,12 +1325,12 @@ const ADMIN_EMAILS = [
 // Verificar se usuário é admin
 async function checkIsAdmin() {
     try {
-        if (!supabaseClient) {
+        if (!supabase) {
             console.log('Modo admin: Supabase não disponível, liberando para testes');
             return true;
         }
         
-        const { data: { user } } = await supabaseClient.auth.getUser();
+        const { data: { user } } = await supabase.auth.getUser();
         if (user && ADMIN_EMAILS.includes(user.email)) {
             console.log('Admin detectado:', user.email);
             return true;
@@ -1403,11 +1351,12 @@ async function checkIsAdmin() {
 }
 
 // Inicializar botão admin
-function initAdminButton() {
+async function initAdminButton() {
+    const isAdmin = await checkIsAdmin();
     const adminBtn = document.getElementById('adminBtn');
     if (adminBtn) {
-        adminBtn.style.display = 'inline-flex';
-        console.log('✅ Botão admin visível');
+        adminBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+        console.log('Botão admin:', isAdmin ? 'visível' : 'oculto');
     }
 }
 
@@ -1417,12 +1366,9 @@ function toggleAdminPanel() {
     const iframe = document.getElementById('adminFrame');
     
     if (panel.style.display === 'none') {
-        // ✅ CORREÇÃO: URL correta do admin — mantém /exec e adiciona ?page=admin
-        // Antes: API_URL.replace('/exec','') gerava URL sem /exec → 403
-        const adminUrl = `${API_URL}?page=admin&t=${Date.now()}`;
-        iframe.src = adminUrl;
+        // ✅ CORREÇÃO: API_URL já termina em /exec — apenas adiciona ?page=admin
+        iframe.src = `${API_URL}?page=admin&t=${Date.now()}`;
         panel.style.display = 'block';
-        console.log('🔧 Admin URL:', adminUrl);
     } else {
         panel.style.display = 'none';
         iframe.src = '';
