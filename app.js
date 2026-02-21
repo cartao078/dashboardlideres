@@ -344,6 +344,11 @@ function renderDashboard(){
 // ============================================================================
 
 function renderDocumentacaoDashboard(d){
+    if (!d || !d.geral) {
+        console.error('❌ renderDocumentacaoDashboard: dados inválidos:', JSON.stringify(d)?.substring(0, 300));
+        showError('Dados inválidos. Chaves recebidas: ' + JSON.stringify(Object.keys(d || {})));
+        return;
+    }
     const {geral, vendasLoja, vendasWeb, consultores, mes, ano} = d;
     const pG = calcPercent(geral.aprovados, geral.total);
     const pL = calcPercent(vendasLoja.aprovados, vendasLoja.total);
@@ -970,6 +975,12 @@ async function loadResumoDashboard(){
 }
 
 function renderResumoDashboard(vendas, app, adim){
+    // Guard: verifica estrutura dos dados
+    if (!vendas || !vendas.geral) {
+        console.error('❌ renderResumoDashboard: dados inválidos:', JSON.stringify(vendas)?.substring(0, 300));
+        showError('Dados de Vendas inválidos. Estrutura recebida: ' + JSON.stringify(Object.keys(vendas || {})));
+        return;
+    }
     const {geral, consultores, mes, ano} = vendas;
     const pAprov = calcPercent(geral.aprovados, geral.total);
     const pApp = app ? calcPercent(app.geral.sim, app.geral.total) : null;
