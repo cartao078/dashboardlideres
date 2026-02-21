@@ -2,7 +2,7 @@
 // DASHBOARD V21.0 - app.js — COM SUPABASE E PAINEL ADMIN
 // ============================================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbzG_ibHfo5Qe9Hc13UgbBL3FgOoTO1dzF37u0zgY9Cd2Tnqm0a3yIel-HYFty_tgvG2UA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycby5ffZWf5lrHveg3SZwqkX6U5e0d87NkNufTWR9vZzzTAq0r7kIheKF5CT1QgiNzXUQHA/exec';
 
 const SUPABASE_URL  = 'https://vycjtmjvkwvxunxtkdyi.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Y2p0bWp2a3d2eHVueHRrZHlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MDY2OTYsImV4cCI6MjA4NzE4MjY5Nn0.wOoAZpA1i-320E8Rc-Ry6nk0KYsedFXb3aS4gkmbjHU';
@@ -87,36 +87,75 @@ function buildUrl(ep,m,y){
     return u; 
 }
 
+// ============================================================================
+// JSONP HELPER (funciona mesmo de file:// e contorna problemas de CORS)
+// ============================================================================
+function fetchViaJsonp(url) {
+    return new Promise((resolve, reject) => {
+        const cbName = 'cb_' + Math.random().toString(36).substr(2, 9);
+        const timeout = setTimeout(() => {
+            delete window[cbName];
+            if (script.parentNode) script.parentNode.removeChild(script);
+            reject(new Error('JSONP timeout após 30s'));
+        }, 30000);
+        
+        window[cbName] = function(data) {
+            clearTimeout(timeout);
+            delete window[cbName];
+            if (script.parentNode) script.parentNode.removeChild(script);
+            resolve(data);
+        };
+        
+        const script = document.createElement('script');
+        script.src = url + '&callback=' + cbName;
+        script.onerror = () => {
+            clearTimeout(timeout);
+            delete window[cbName];
+            reject(new Error('JSONP script error'));
+        };
+        document.head.appendChild(script);
+    });
+}
+
 async function fetchData(endpoint, mes, ano) {
     const url = buildUrl(endpoint, mes, ano);
     console.log('🔄 Fetching:', url);
     
+    // Tenta fetch normal com timeout de 15s
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    
     try {
-        const resp = await fetch(url);
+        const resp = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
         if (!resp.ok) {
-            const errMsg = `HTTP ${resp.status}: ${resp.statusText}`;
-            console.error('❌ HTTP Error:', errMsg);
-            showDiagnostic('API retornou erro: ' + errMsg, url);
-            return { status: 'error', error: errMsg };
+            throw new Error(`HTTP ${resp.status}`);
         }
         const text = await resp.text();
-        console.log('📄 Raw response (' + endpoint + '):', text.substring(0, 300));
-        
         let json;
-        try {
-            json = JSON.parse(text);
-        } catch(parseErr) {
-            console.error('❌ JSON inválido:', text.substring(0, 500));
-            showDiagnostic('API retornou HTML em vez de JSON. A Web App não foi reimplantada.', url);
-            return { status: 'error', error: 'API retornou HTML (não foi reimplantada). Acesse: Implantar → Gerenciar implantações → Nova versão.' };
-        }
+        try { json = JSON.parse(text); } 
+        catch(e) { throw new Error('resposta_nao_json'); }
         
-        console.log('✅ Response:', endpoint, json.status, json.data ? '(tem dados)' : '(sem dados)');
+        console.log('✅ fetch() OK:', endpoint, json.status);
         return json;
-    } catch (error) {
-        console.error('❌ Fetch error:', error.message);
-        showDiagnostic('Erro de rede: ' + error.message, url);
-        return { status: 'error', error: 'Erro de rede/CORS: ' + error.message };
+        
+    } catch (fetchError) {
+        clearTimeout(timeoutId);
+        console.warn('⚠️ fetch() falhou, tentando JSONP:', fetchError.message);
+        
+        // Fallback: JSONP (funciona de file://, contorna CORS/redirect do Google)
+        try {
+            const data = await fetchViaJsonp(url);
+            console.log('✅ JSONP OK:', endpoint, data.status);
+            return data;
+        } catch (jsonpError) {
+            console.error('❌ JSONP também falhou:', jsonpError.message);
+            return { 
+                status: 'error', 
+                error: `Não foi possível conectar à API. fetch: ${fetchError.message} | jsonp: ${jsonpError.message}` 
+            };
+        }
     }
 }
 
