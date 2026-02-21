@@ -11,10 +11,10 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 // INICIALIZAÇÃO DO SUPABASE
 // ============================================================================
 
-let supabase;
+let supabaseClient;
 try {
     if (window.supabase) {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
         console.log('✅ Supabase inicializado');
     } else {
         console.warn('⚠️ Biblioteca Supabase não encontrada');
@@ -1325,12 +1325,12 @@ const ADMIN_EMAILS = [
 // Verificar se usuário é admin
 async function checkIsAdmin() {
     try {
-        if (!supabase) {
+        if (!supabaseClient) {
             console.log('Modo admin: Supabase não disponível, liberando para testes');
             return true;
         }
         
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await supabaseClient.auth.getUser();
         if (user && ADMIN_EMAILS.includes(user.email)) {
             console.log('Admin detectado:', user.email);
             return true;
