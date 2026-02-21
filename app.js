@@ -299,11 +299,34 @@ function renderDashboard(){
 // ============================================================================
 
 function renderDocumentacaoDashboard(d){
-    // ✅ CORREÇÃO: verificação defensiva das propriedades esperadas
+    // ✅ CORREÇÃO: verificação defensiva + diagnóstico visual
     if (!d || !d.geral) {
         const keys = d ? Object.keys(d).join(', ') : 'null';
-        showError(`Estrutura de dados inesperada para Vendas.<br><small>Campos recebidos: ${keys}</small>`);
-        console.error('Dados Vendas:', d);
+        // Tenta achar 'geral' em subnível (ex: d.data.geral ou d.documentacao.geral)
+        for (const k of (d ? Object.keys(d) : [])) {
+            if (d[k] && typeof d[k] === 'object' && d[k].geral) {
+                console.log(`🔄 Encontrou geral em d.${k} — ajustando`);
+                return renderDocumentacaoDashboard(d[k]);
+            }
+        }
+        const preview = d ? JSON.stringify(d).substring(0, 400) : 'null';
+        dashboardContent.innerHTML = `
+            <div class="error-message" style="text-align:left;max-width:900px;margin:0 auto;">
+                <i class="fas fa-exclamation-triangle" style="font-size:2rem;margin-bottom:12px;display:block;text-align:center;"></i>
+                <h3 style="text-align:center;margin-bottom:12px;">Estrutura de dados inesperada</h3>
+                <p style="margin-bottom:8px;">A API retornou dados mas sem o campo <code>geral</code> esperado.</p>
+                <p style="margin-bottom:8px;"><strong>Campos recebidos:</strong> <code>${keys}</code></p>
+                <details style="margin-top:12px;">
+                    <summary style="cursor:pointer;color:#7c3aed;font-weight:600;">Ver dados completos recebidos</summary>
+                    <pre style="background:#1c2e23;color:#a3e6b4;padding:16px;border-radius:8px;margin-top:8px;overflow:auto;font-size:0.8rem;max-height:300px;">${preview}</pre>
+                </details>
+                <p style="margin-top:12px;font-size:0.85rem;color:#888;">Cole o conteúdo acima aqui e me envie para que eu possa ajustar o código ao formato da sua API.</p>
+                <button class="btn btn-success" onclick="loadDashboard()" style="margin-top:16px;background:var(--danger);color:white">
+                    <i class="fas fa-redo"></i> Tentar Novamente
+                </button>
+            </div>`;
+        console.error('Dados Vendas completo:', d);
+        hideLoading();
         return;
     }
     const {geral, vendasLoja, vendasWeb, consultores, mes, ano} = d;
