@@ -1,23 +1,99 @@
 // ============================================================================
-// DASHBOARD V21.0 - app.js — COM SUPABASE
+// DASHBOARD V21.0 - app.js — COM SUPABASE E PAINEL ADMIN
 // ============================================================================
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbyiKJYBiS1pp5nYa6rf7os6fayYRQqdt-FdubwkcOYUDTenh-TTGkG99AuyLRgtgoWbVg/exec';
 
 const SUPABASE_URL  = 'https://vycjtmjvkwvxunxtkdyi.supabase.co';
-const SUPABASE_ANON = 'sb_publishable_qNWYXG_mPokAp-5C08AM0Q_p-HdsjYS';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Y2p0bWp2a3d2eHVueHRrZHlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MDY2OTYsImV4cCI6MjA4NzE4MjY5Nn0.5w4z1hX2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0';
+
+// Inicializar Supabase
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 const C = {
     green:'#00a651', greenFade:'rgba(0,166,81,0.12)',
     lime:'#7ed321',  teal:'#0d9488',
     warn:'#f59e0b',  warnFade:'rgba(245,158,11,0.12)',
-    danger:'#ef4444',gray:'#6b8072', border:'#d1e8d9',
+    danger:'#ef4444', gray:'#6b8072', border:'#d1e8d9',
 };
 
 const RANKING_SETORES = ['VENDAS','RECEPCAO','REFILIACAO'];
 const SEM_FILTRO      = ['recorrencia','recorrencia_vendedor'];
 
-// ── Cache ──────────────────────────────────────────────────────────────────
+// ============================================================================
+// PAINEL ADMIN
+// ============================================================================
+
+// Lista de emails administradores (AJUSTE PARA SEUS EMAILS)
+const ADMIN_EMAILS = [
+    'admin@cdt.com.br',
+    'gestor@cdt.com.br',
+    'documentostc01@gmail.com'  // Seu email
+];
+
+/**
+ * Verifica se o usuário atual é administrador
+ */
+async function checkIsAdmin() {
+    try {
+        // Tenta pegar do Supabase Auth
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user && ADMIN_EMAILS.includes(user.email)) {
+            console.log('Admin detectado:', user.email);
+            return true;
+        }
+        
+        // Fallback: verificar por parâmetro na URL (para testes)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('admin') === 'true') {
+            console.log('Modo admin ativado por URL');
+            return true;
+        }
+        
+        // Durante desenvolvimento, pode liberar para todos
+        // return true;
+        
+        return false;
+    } catch (e) {
+        console.warn('Erro ao verificar admin:', e);
+        return false;
+    }
+}
+
+/**
+ * Inicializa o botão admin (mostra apenas se for admin)
+ */
+async function initAdminButton() {
+    const isAdmin = await checkIsAdmin();
+    const adminBtn = document.getElementById('adminBtn');
+    if (adminBtn) {
+        adminBtn.style.display = isAdmin ? 'inline-flex' : 'none';
+        console.log('Botão admin:', isAdmin ? 'visível' : 'oculto');
+    }
+}
+
+/**
+ * Alterna a visibilidade do painel admin
+ */
+function toggleAdminPanel() {
+    const panel = document.getElementById('adminPanel');
+    const iframe = document.getElementById('adminFrame');
+    
+    if (panel.style.display === 'none') {
+        // Carregar o admin.html no iframe
+        const baseUrl = API_URL.replace('/exec', '');
+        iframe.src = `${baseUrl}?page=admin&t=${Date.now()}`; // Cache bust
+        panel.style.display = 'block';
+    } else {
+        panel.style.display = 'none';
+        iframe.src = ''; // Limpa o iframe
+    }
+}
+
+// ============================================================================
+// CACHE
+// ============================================================================
+
 const CACHE_MEM  = new Map();
 const CACHE_TTL  = 30 * 60 * 1000;
 const LS_PREFIX  = 'cdt_dash_';
@@ -220,6 +296,9 @@ document.addEventListener('DOMContentLoaded', function(){
     refreshBtn.addEventListener('click',   () => { invalidateCache(cacheKey(currentDashboard, currentMonth, currentYear)); loadDashboard(); });
     downloadBtn.addEventListener('click',  exportPage);
 
+    // Inicializar botão admin
+    initAdminButton();
+    
     loadDashboard();
 });
 
