@@ -2,7 +2,7 @@
 // DASHBOARD V21.0 - app.js — COM SUPABASE E PAINEL ADMIN
 // ============================================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbyiKJYBiS1pp5nYa6rf7os6fayYRQqdt-FdubwkcOYUDTenh-TTGkG99AuyLRgtgoWbVg/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycby5ffZWf5lrHveg3SZwqkX6U5e0d87NkNufTWR9vZzzTAq0r7kIheKF5CT1QgiNzXUQHA/exec';
 
 const SUPABASE_URL  = 'https://vycjtmjvkwvxunxtkdyi.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Y2p0bWp2a3d2eHVueHRrZHlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MDY2OTYsImV4cCI6MjA4NzE4MjY5Nn0.5w4z1hX2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0';
