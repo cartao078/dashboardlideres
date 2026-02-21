@@ -1,8 +1,8 @@
 // ============================================================================
-// DASHBOARD V20.10 - app.js — COM SUPABASE
+// DASHBOARD V21.0 - app.js — COM SUPABASE
 // ============================================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycby7E_l1q-sgkJV9oPYIdsOwjF3rJUnNjPwzSrf-jOhCwTRbk5NNLPtdF9S2320ngiI_Hw/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyiKJYBiS1pp5nYa6rf7os6fayYRQqdt-FdubwkcOYUDTenh-TTGkG99AuyLRgtgoWbVg/exec';
 
 const SUPABASE_URL  = 'https://vycjtmjvkwvxunxtkdyi.supabase.co';
 const SUPABASE_ANON = 'sb_publishable_qNWYXG_mPokAp-5C08AM0Q_p-HdsjYS';
