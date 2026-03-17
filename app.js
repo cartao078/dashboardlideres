@@ -565,8 +565,8 @@ function getMonthName(m){ return ['Janeiro','Fevereiro','Março','Abril','Maio',
 
 // ============================================================================
 // DASHBOARD: CAMPANHA 14° SALÁRIO — ADICIONADO
-// Setores fixos conforme configuração original.
-// Checkboxes nativos do Sheets: retornam true/false diretamente.
+// Layout compacto: meses maiores, oculta colaboradores sem nenhum destaque,
+// botão para revelar ocultos por setor.
 // ============================================================================
 
 function renderCampanha14Dashboard(d) {
@@ -592,11 +592,11 @@ function renderCampanha14Dashboard(d) {
             const atual = i === mesAtual;
             const fut   = i > mesAtual;
             let bg, color, border, icon;
-            if (dest)      { bg='#dcfce7'; color='#166534'; border='#16a34a'; icon='<i class="fas fa-check" style="font-size:8px"></i>'; }
-            else if (fut)  { bg='#f8fafc'; color='#94a3b8'; border='#e2e8f0'; icon=m; }
-            else           { bg='#fee2e2'; color='#991b1b'; border='#fca5a5'; icon=m; }
+            if (dest)     { bg='#dcfce7'; color='#166534'; border='#16a34a'; icon='<i class="fas fa-check" style="font-size:9px"></i>'; }
+            else if (fut) { bg='#f8fafc'; color='#94a3b8'; border='#e2e8f0'; icon=m; }
+            else          { bg='#fee2e2'; color='#991b1b'; border='#fca5a5'; icon=m; }
             const ring = atual ? ';outline:2px solid #0ea5e9;outline-offset:2px' : '';
-            return `<div title="${m}" style="width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;background:${bg};color:${color};border:1px solid ${border}${ring}">${icon}</div>`;
+            return `<div title="${m}" style="width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;background:${bg};color:${color};border:1px solid ${border}${ring}">${icon}</div>`;
         }).join('');
     }
 
@@ -604,46 +604,78 @@ function renderCampanha14Dashboard(d) {
         const pct = Math.min(100, Math.round((c.totalDestaques / META) * 100));
         const cor = c.status==='classificado' ? '#00a651' : c.status==='fora' ? '#ef4444' : '#f59e0b';
         return `
-            <div style="height:5px;background:#e5e7eb;border-radius:3px;margin:8px 0 4px">
-                <div style="height:5px;border-radius:3px;background:${cor};width:${pct}%;transition:.4s"></div>
-            </div>
-            <div style="font-size:11px;color:var(--gray)">${c.totalDestaques} de ${META} meses • ${pct}%</div>`;
+            <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+                <div style="flex:1;height:6px;background:#e5e7eb;border-radius:3px">
+                    <div style="height:6px;border-radius:3px;background:${cor};width:${pct}%;transition:.4s"></div>
+                </div>
+                <span style="font-size:11px;color:var(--gray);white-space:nowrap;min-width:80px;text-align:right">${c.totalDestaques}/${META} meses • ${pct}%</span>
+            </div>`;
     }
 
     function colabCard(c) {
         return `
-            <div style="background:var(--light);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px">
+            <div style="background:var(--light);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-                    <span style="font-weight:600;font-size:14px;color:var(--text);flex:1">${c.nome}</span>
+                    <span style="font-weight:600;font-size:13px;color:var(--text);flex:1;line-height:1.3">${c.nome}</span>
                     ${badgeStatus(c)}
                 </div>
-                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:2px">${mesesHtml(c)}</div>
+                <div style="display:flex;gap:5px;flex-wrap:wrap">${mesesHtml(c)}</div>
                 ${progressBar(c)}
             </div>`;
     }
 
+    // ID único por setor para o botão de toggle
+    let setorIdx = 0;
     const setorCards = Object.entries(porSetor).map(([setor, lista]) => {
-        const classif = lista.filter(c => c.status==='classificado').length;
+        const classif   = lista.filter(c => c.status==='classificado').length;
+        const comDest   = lista.filter(c => c.totalDestaques > 0);
+        const semDest   = lista.filter(c => c.totalDestaques === 0);
+        const sid       = 'setor_' + (setorIdx++);
+
+        const btnOcultos = semDest.length > 0 ? `
+            <button onclick="
+                var el=document.getElementById('${sid}');
+                var btn=this;
+                if(el.style.display==='none'){
+                    el.style.display='block';
+                    btn.innerHTML='<i class=\\'fas fa-eye-slash\\'></i> Ocultar sem destaque (${semDest.length})';
+                } else {
+                    el.style.display='none';
+                    btn.innerHTML='<i class=\\'fas fa-eye\\'></i> Ver sem destaque (${semDest.length})';
+                }
+            " style="background:none;border:1px dashed var(--border);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--gray);cursor:pointer;margin-top:4px;width:100%">
+                <i class='fas fa-eye'></i> Ver sem destaque (${semDest.length})
+            </button>` : '';
+
         return `
-            <div class="card" style="margin-bottom:20px">
-                <div class="card-header">
-                    <div class="card-title"><i class="fas fa-users" style="color:var(--primary)"></i> ${setor}</div>
-                    <div style="font-size:12px;color:var(--gray)">${lista.length} colaborador${lista.length!==1?'es':''} • ${classif} classificado${classif!==1?'s':''}</div>
+            <div class="card" style="margin-bottom:16px">
+                <div class="card-header" style="padding-bottom:12px;margin-bottom:12px">
+                    <div class="card-title" style="font-size:15px">
+                        <i class="fas fa-users" style="color:var(--primary)"></i> ${setor}
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        ${semDest.length > 0 ? `<span style="font-size:11px;color:var(--gray)">${semDest.length} sem destaque</span>` : ''}
+                        <span style="font-size:12px;color:var(--success);font-weight:600">${classif}/${lista.length} classificados</span>
+                    </div>
                 </div>
-                ${lista.map(colabCard).join('')}
+                ${comDest.map(colabCard).join('')}
+                ${btnOcultos}
+                <div id="${sid}" style="display:none;margin-top:4px">
+                    ${semDest.map(colabCard).join('')}
+                </div>
             </div>`;
     }).join('');
 
     dashboardContent.innerHTML = `
         <h2 class="dash-title"><i class="fas fa-trophy" style="color:#f59e0b"></i> Campanha 14° Salário — Jan a Nov 2026</h2>
-        <div style="background:#fefce8;padding:12px 18px;border-radius:12px;margin-bottom:20px;border-left:4px solid #f59e0b">
-            <p style="margin:0;color:#854d0e;font-size:13px">
+        <div style="background:#fefce8;padding:10px 16px;border-radius:10px;margin-bottom:16px;border-left:4px solid #f59e0b">
+            <p style="margin:0;color:#854d0e;font-size:12px">
                 <i class="fas fa-info-circle"></i>
                 <strong>Meta:</strong> destaque em pelo menos <strong>${META} de 11 meses</strong> para garantir o 14° salário.
-                Marque os checkboxes diretamente na planilha Google — o painel atualiza ao recarregar.
+                Marque os checkboxes na planilha Google e clique em <strong>Atualizar Dados</strong>.
             </p>
         </div>
-        <div class="main-cards" style="margin-bottom:24px">
+        <div class="main-cards" style="margin-bottom:20px">
             ${metricItem('Colaboradores', resumo.totalColabs)}
             ${metricItem('Classificados', resumo.classificados, 'var(--success)')}
             ${metricItem('Em risco', resumo.emRisco, 'var(--danger)')}
