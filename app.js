@@ -2,7 +2,7 @@
 // DASHBOARD V20.10 - app.js — COM SUPABASE
 // ============================================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbxCUuKU4xsz80mqk9XoeXop7V_cHcVwFIJaYTdBmcc0lugTKGbmwEhLProxMn0mRlYCsw/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzT1dxXnP5GiLh73AH7H1f79uYUCyIJvmZtfLnDWhZ12C-6n03dFWGYahLKejcdf0Pfdw/exec';
 
 const SUPABASE_URL  = 'https://vycjtmjvkwvxunxtkdyi.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Y2p0bWp2a3d2eHVueHRrZHlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MDY2OTYsImV4cCI6MjA4NzE4MjY5Nn0.wOoAZpA1i-320E8Rc-Ry6nk0KYsedFXb3aS4gkmbjHU';
@@ -15,7 +15,7 @@ const C = {
 };
 
 const RANKING_SETORES = ['VENDAS','RECEPCAO','REFILIACAO'];
-const SEM_FILTRO      = ['recorrencia','recorrencia_vendedor'];
+const SEM_FILTRO      = ['recorrencia','recorrencia_vendedor','campanha14'];
 
 // ── Cache ──────────────────────────────────────────────────────────────────
 const CACHE_MEM  = new Map();
@@ -128,6 +128,7 @@ function rowToData(endpoint, row) {
             consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : row.consultores
         };
     }
+    // campanha14 não passa por Supabase — vem direto do Apps Script
     return null;
 }
 
@@ -276,6 +277,7 @@ function renderDashboard(){
         case 'recorrencia':          renderRecorrenciaDashboard(data);         break;
         case 'recorrencia_vendedor': renderRecorrenciaVendedorDashboard(data); break;
         case 'refuturiza':           renderRefuturizaDashboard(data);          break;
+        case 'campanha14':           renderCampanha14Dashboard(data);          break; // ADICIONADO
         default: showError('Dashboard não encontrado: ' + currentDashboard);
     }
 }
@@ -560,3 +562,81 @@ async function exportPage(){
     finally{ btn.innerHTML=orig; btn.disabled=false; }
 }
 function getMonthName(m){ return ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][m-1]; }
+
+// ============================================================================
+// DASHBOARD: CAMPANHA 14° SALÁRIO — ADICIONADO
+// Lê direto do Apps Script (sem Supabase). Somente leitura — lançamentos
+// são feitos diretamente na planilha Google "Destaques".
+// ============================================================================
+
+function renderCampanha14Dashboard(d) {
+    if (!d || !d.resumo || !d.colaboradores) { showError('Dados da Campanha 14° não encontrados'); return; }
+
+    const { resumo, colaboradores, porSetor } = d;
+    const MESES = resumo.mesesCampanha || ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov"];
+    const META  = resumo.metaMeses || 9;
+    const mesAtual = new Date().getMonth(); // 0 = Jan
+
+    function badgeStatus(c) {
+        const faltam = META - c.totalDestaques;
+        if (c.status === 'classificado') return `<span style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">Classificado</span>`;
+        if (c.status === 'fora')         return `<span style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">Fora da meta</span>`;
+        return `<span style="background:#fef9c3;color:#854d0e;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">${faltam} mes${faltam>1?'es':''} p/ meta</span>`;
+    }
+
+    function mesesHtml(c) {
+        return MESES.map((m, i) => {
+            const dest  = c.meses[i];
+            const atual = i === mesAtual;
+            const fut   = i > mesAtual;
+            let bg, color, border;
+            if (dest)       { bg='#dcfce7'; color='#166534'; border='#16a34a'; }
+            else if (fut)   { bg='#f8fafc'; color='#94a3b8'; border='#e2e8f0'; }
+            else            { bg='#fee2e2'; color='#991b1b'; border='#fca5a5'; }
+            const ring = atual ? `;outline:2px solid #0ea5e9;outline-offset:2px` : '';
+            return `<div style="width:30px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;background:${bg};color:${color};border:1px solid ${border}${ring}" title="${m}">${m}</div>`;
+        }).join('');
+    }
+
+    function progressBar(c) {
+        const pct = Math.min(100, Math.round((c.totalDestaques / META) * 100));
+        const cor  = c.status==='classificado' ? '#00a651' : c.status==='fora' ? '#ef4444' : '#f59e0b';
+        return `<div style="height:5px;background:#e5e7eb;border-radius:3px;margin:6px 0 4px">
+            <div style="height:5px;border-radius:3px;background:${cor};width:${pct}%;transition:.3s"></div></div>
+            <div style="font-size:11px;color:var(--gray)">${c.totalDestaques} de ${META} meses • ${pct}%</div>`;
+    }
+
+    const setorCards = Object.entries(porSetor).map(([setor, lista]) => {
+        const classif = lista.filter(c => c.status==='classificado').length;
+        const cards   = lista.map(c => `
+            <div style="background:var(--light);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                    <span style="font-weight:600;font-size:14px;color:var(--text)">${c.nome}</span>
+                    ${badgeStatus(c)}
+                </div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px">${mesesHtml(c)}</div>
+                ${progressBar(c)}
+            </div>`).join('');
+        return `
+            <div class="card" style="margin-bottom:20px">
+                <div class="card-header">
+                    <div class="card-title"><i class="fas fa-users" style="color:var(--primary)"></i> ${setor}</div>
+                    <div style="font-size:12px;color:var(--gray)">${lista.length} colaborador${lista.length!==1?'es':''} • ${classif} classificado${classif!==1?'s':''}</div>
+                </div>
+                ${cards}
+            </div>`;
+    }).join('');
+
+    dashboardContent.innerHTML = `
+        <h2 class="dash-title"><i class="fas fa-trophy" style="color:#f59e0b"></i> Campanha 14° Salário — Jan a Nov 2026</h2>
+        <div style="background:#fefce8;padding:12px 18px;border-radius:12px;margin-bottom:20px;border-left:4px solid #f59e0b">
+            <p style="margin:0;color:#854d0e;font-size:13px"><i class="fas fa-info-circle"></i> <strong>Meta:</strong> ser destaque em pelo menos <strong>${META} de 11 meses</strong> para garantir o 14° salário. Lance os destaques diretamente na planilha Google.</p>
+        </div>
+        <div class="main-cards" style="margin-bottom:24px">
+            ${metricItem('Colaboradores', resumo.totalColabs)}
+            ${metricItem('Classificados', resumo.classificados, 'var(--success)')}
+            ${metricItem('Em risco', resumo.emRisco, 'var(--danger)')}
+            ${metricItem('No prazo', resumo.noPrazo, 'var(--warning)')}
+        </div>
+        ${setorCards}`;
+}
