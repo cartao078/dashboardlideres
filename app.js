@@ -565,23 +565,25 @@ function getMonthName(m){ return ['Janeiro','Fevereiro','Março','Abril','Maio',
 
 // ============================================================================
 // DASHBOARD: CAMPANHA 14° SALÁRIO — ADICIONADO
-// Lê direto do Apps Script (sem Supabase). Somente leitura — lançamentos
-// são feitos diretamente na planilha Google "Destaques".
+// Setores fixos conforme configuração original.
+// Checkboxes nativos do Sheets: retornam true/false diretamente.
 // ============================================================================
 
 function renderCampanha14Dashboard(d) {
     if (!d || !d.resumo || !d.colaboradores) { showError('Dados da Campanha 14° não encontrados'); return; }
 
-    const { resumo, colaboradores, porSetor } = d;
-    const MESES = resumo.mesesCampanha || ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov"];
-    const META  = resumo.metaMeses || 9;
-    const mesAtual = new Date().getMonth(); // 0 = Jan
+    const { resumo, porSetor } = d;
+    const MESES    = resumo.mesesCampanha || ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov"];
+    const META     = resumo.metaMeses || 9;
+    const mesAtual = new Date().getMonth();
 
     function badgeStatus(c) {
         const faltam = META - c.totalDestaques;
-        if (c.status === 'classificado') return `<span style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">Classificado</span>`;
-        if (c.status === 'fora')         return `<span style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">Fora da meta</span>`;
-        return `<span style="background:#fef9c3;color:#854d0e;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">${faltam} mes${faltam>1?'es':''} p/ meta</span>`;
+        if (c.status === 'classificado')
+            return `<span style="background:#dcfce7;color:#166534;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600"><i class="fas fa-check" style="font-size:9px"></i> Classificado</span>`;
+        if (c.status === 'fora')
+            return `<span style="background:#fee2e2;color:#991b1b;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600"><i class="fas fa-times" style="font-size:9px"></i> Fora da meta</span>`;
+        return `<span style="background:#fef9c3;color:#854d0e;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600">${faltam} ${faltam===1?'mês':'meses'} p/ meta</span>`;
     }
 
     function mesesHtml(c) {
@@ -589,48 +591,57 @@ function renderCampanha14Dashboard(d) {
             const dest  = c.meses[i];
             const atual = i === mesAtual;
             const fut   = i > mesAtual;
-            let bg, color, border;
-            if (dest)       { bg='#dcfce7'; color='#166534'; border='#16a34a'; }
-            else if (fut)   { bg='#f8fafc'; color='#94a3b8'; border='#e2e8f0'; }
-            else            { bg='#fee2e2'; color='#991b1b'; border='#fca5a5'; }
-            const ring = atual ? `;outline:2px solid #0ea5e9;outline-offset:2px` : '';
-            return `<div style="width:30px;height:30px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;background:${bg};color:${color};border:1px solid ${border}${ring}" title="${m}">${m}</div>`;
+            let bg, color, border, icon;
+            if (dest)      { bg='#dcfce7'; color='#166534'; border='#16a34a'; icon='<i class="fas fa-check" style="font-size:8px"></i>'; }
+            else if (fut)  { bg='#f8fafc'; color='#94a3b8'; border='#e2e8f0'; icon=m; }
+            else           { bg='#fee2e2'; color='#991b1b'; border='#fca5a5'; icon=m; }
+            const ring = atual ? ';outline:2px solid #0ea5e9;outline-offset:2px' : '';
+            return `<div title="${m}" style="width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;background:${bg};color:${color};border:1px solid ${border}${ring}">${icon}</div>`;
         }).join('');
     }
 
     function progressBar(c) {
         const pct = Math.min(100, Math.round((c.totalDestaques / META) * 100));
-        const cor  = c.status==='classificado' ? '#00a651' : c.status==='fora' ? '#ef4444' : '#f59e0b';
-        return `<div style="height:5px;background:#e5e7eb;border-radius:3px;margin:6px 0 4px">
-            <div style="height:5px;border-radius:3px;background:${cor};width:${pct}%;transition:.3s"></div></div>
+        const cor = c.status==='classificado' ? '#00a651' : c.status==='fora' ? '#ef4444' : '#f59e0b';
+        return `
+            <div style="height:5px;background:#e5e7eb;border-radius:3px;margin:8px 0 4px">
+                <div style="height:5px;border-radius:3px;background:${cor};width:${pct}%;transition:.4s"></div>
+            </div>
             <div style="font-size:11px;color:var(--gray)">${c.totalDestaques} de ${META} meses • ${pct}%</div>`;
+    }
+
+    function colabCard(c) {
+        return `
+            <div style="background:var(--light);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+                    <span style="font-weight:600;font-size:14px;color:var(--text);flex:1">${c.nome}</span>
+                    ${badgeStatus(c)}
+                </div>
+                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:2px">${mesesHtml(c)}</div>
+                ${progressBar(c)}
+            </div>`;
     }
 
     const setorCards = Object.entries(porSetor).map(([setor, lista]) => {
         const classif = lista.filter(c => c.status==='classificado').length;
-        const cards   = lista.map(c => `
-            <div style="background:var(--light);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-                    <span style="font-weight:600;font-size:14px;color:var(--text)">${c.nome}</span>
-                    ${badgeStatus(c)}
-                </div>
-                <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:4px">${mesesHtml(c)}</div>
-                ${progressBar(c)}
-            </div>`).join('');
         return `
             <div class="card" style="margin-bottom:20px">
                 <div class="card-header">
                     <div class="card-title"><i class="fas fa-users" style="color:var(--primary)"></i> ${setor}</div>
                     <div style="font-size:12px;color:var(--gray)">${lista.length} colaborador${lista.length!==1?'es':''} • ${classif} classificado${classif!==1?'s':''}</div>
                 </div>
-                ${cards}
+                ${lista.map(colabCard).join('')}
             </div>`;
     }).join('');
 
     dashboardContent.innerHTML = `
         <h2 class="dash-title"><i class="fas fa-trophy" style="color:#f59e0b"></i> Campanha 14° Salário — Jan a Nov 2026</h2>
         <div style="background:#fefce8;padding:12px 18px;border-radius:12px;margin-bottom:20px;border-left:4px solid #f59e0b">
-            <p style="margin:0;color:#854d0e;font-size:13px"><i class="fas fa-info-circle"></i> <strong>Meta:</strong> ser destaque em pelo menos <strong>${META} de 11 meses</strong> para garantir o 14° salário. Lance os destaques diretamente na planilha Google.</p>
+            <p style="margin:0;color:#854d0e;font-size:13px">
+                <i class="fas fa-info-circle"></i>
+                <strong>Meta:</strong> destaque em pelo menos <strong>${META} de 11 meses</strong> para garantir o 14° salário.
+                Marque os checkboxes diretamente na planilha Google — o painel atualiza ao recarregar.
+            </p>
         </div>
         <div class="main-cards" style="margin-bottom:24px">
             ${metricItem('Colaboradores', resumo.totalColabs)}
