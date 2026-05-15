@@ -209,7 +209,8 @@ document.addEventListener('DOMContentLoaded', function(){
     Chart.defaults.font.family="'Plus Jakarta Sans', sans-serif";
     Chart.defaults.font.size=12; Chart.defaults.color='#5a7a65';
 
-    dashboardBtns    = document.querySelectorAll('.dashboard-btn');
+    // Sidebar usa .sidebar-btn em vez de .dashboard-btn
+    dashboardBtns    = document.querySelectorAll('.sidebar-btn');
     monthSelect      = document.getElementById('monthSelect');
     yearSelect       = document.getElementById('yearSelect');
     dashboardContent = document.getElementById('dashboardContent');
@@ -219,22 +220,39 @@ document.addEventListener('DOMContentLoaded', function(){
     lastUpdateEl     = document.getElementById('lastUpdate');
     periodSelector   = document.getElementById('periodSelector');
 
+    // ── Anos ──────────────────────────────────────────────────────────────
     const anoAtual = new Date().getFullYear();
     for(let y = anoAtual; y >= anoAtual - 3; y--){
         const opt = document.createElement('option');
         opt.value = y; opt.textContent = y;
         yearSelect.appendChild(opt);
     }
-
     monthSelect.value = currentMonth;
     yearSelect.value  = currentYear;
+
+    // ── Sidebar nav ────────────────────────────────────────────────────────
+    const topbarTitle = document.getElementById('topbarTitle');
+    const TITLES = {
+        resumo:'Resumo Geral', documentacao:'Vendas / Documentação',
+        app:'App', adimplencia:'Adimplência', recorrencia:'Recorrência',
+        recorrencia_vendedor:'Recorrência Vendedor', refuturiza:'Refuturiza',
+        campanha14:'Campanha 14° Salário'
+    };
 
     dashboardBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             dashboardBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             currentDashboard = btn.dataset.dashboard;
-            periodSelector.style.display = SEM_FILTRO.includes(currentDashboard) ? 'none' : 'flex';
+            if(topbarTitle) topbarTitle.textContent = TITLES[currentDashboard] || currentDashboard;
+
+            // Oculta seletor de período para dashboards sem filtro de mês
+            if(periodSelector){
+                periodSelector.style.display = SEM_FILTRO.includes(currentDashboard) ? 'none' : 'flex';
+            }
+
+            // Fecha sidebar no mobile após clicar
+            closeSidebarMobile();
             loadDashboard();
         });
     });
@@ -243,6 +261,27 @@ document.addEventListener('DOMContentLoaded', function(){
     yearSelect.addEventListener('change',  () => { currentYear  = parseInt(yearSelect.value);  loadDashboard(); });
     refreshBtn.addEventListener('click',   () => { invalidateCache(cacheKey(currentDashboard, currentMonth, currentYear)); loadDashboard(); });
     downloadBtn.addEventListener('click',  exportPage);
+
+    // ── Hamburguer mobile ─────────────────────────────────────────────────
+    const sidebarToggle  = document.getElementById('sidebarToggle');
+    const sidebar        = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+    function closeSidebarMobile(){
+        if(sidebar)        sidebar.classList.remove('open');
+        if(sidebarOverlay) sidebarOverlay.classList.remove('open');
+    }
+
+    if(sidebarToggle){
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('open');
+            sidebarOverlay.classList.toggle('open');
+        });
+    }
+
+    if(sidebarOverlay){
+        sidebarOverlay.addEventListener('click', closeSidebarMobile);
+    }
 
     loadDashboard();
 });
@@ -719,7 +758,7 @@ async function exportPage(){
     btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Gerando imagem...';
     btn.disabled=true;
     try{
-        const container=document.querySelector('.container');
+        const container=document.querySelector('.main-wrapper');
         const canvas=await html2canvas(container,{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollX:0,scrollY:-window.scrollY,windowWidth:container.scrollWidth,windowHeight:container.scrollHeight,onclone:(doc)=>{doc.querySelector('.dashboard-content').style.overflow='visible';}});
         const nome=currentDashboard.toUpperCase().replace('_','-');
         const periodo=['recorrencia','recorrencia_vendedor'].includes(currentDashboard)?'':`_${getMonthName(currentMonth)}-${currentYear}`;
