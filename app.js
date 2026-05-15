@@ -83,11 +83,34 @@ async function fetchSupabase(endpoint, mes, ano) {
 function rowToData(endpoint, row) {
     if (!row) return null;
     if (endpoint === 'documentacao') {
+        const parseJ = v => typeof v === 'string' ? JSON.parse(v) : (v || {total:0,cancelados:0,aprovados:0,reprovados:0,expirado:0,pendente:0,naoEnviado:0});
         return {
             mes: row.mes_nome, ano: row.ano,
-            geral: { total: row.geral_total, aprovados: row.geral_aprovados, pendencias: row.geral_pendencias, reprovados: row.geral_reprovados, expirado: row.geral_expirado, pendente: row.geral_pendente, naoEnviado: row.geral_nao_enviado },
-            vendasLoja: { total: row.loja_total, aprovados: row.loja_aprovados, pendencias: row.loja_pendencias, reprovados: row.loja_reprovados, expirado: row.loja_expirado, pendente: row.loja_pendente, naoEnviado: row.loja_nao_enviado },
-            vendasWeb: { total: row.web_total, aprovados: row.web_aprovados, pendencias: row.web_pendencias, reprovados: row.web_reprovados, expirado: row.web_expirado, pendente: row.web_pendente, naoEnviado: row.web_nao_enviado },
+            temColunasPromo: row.tem_promocao || false,
+            geral: {
+                total: row.geral_total, cancelados: row.geral_cancelados||0,
+                aprovados: row.geral_aprovados, pendencias: row.geral_pendencias,
+                reprovados: row.geral_reprovados, expirado: row.geral_expirado,
+                pendente: row.geral_pendente, naoEnviado: row.geral_nao_enviado,
+                promo:  parseJ(row.geral_promo),
+                normal: parseJ(row.geral_normal)
+            },
+            vendasLoja: {
+                total: row.loja_total, cancelados: row.loja_cancelados||0,
+                aprovados: row.loja_aprovados, pendencias: row.loja_pendencias,
+                reprovados: row.loja_reprovados, expirado: row.loja_expirado,
+                pendente: row.loja_pendente, naoEnviado: row.loja_nao_enviado,
+                promo:  parseJ(row.loja_promo),
+                normal: parseJ(row.loja_normal)
+            },
+            vendasWeb: {
+                total: row.web_total, cancelados: row.web_cancelados||0,
+                aprovados: row.web_aprovados, pendencias: row.web_pendencias,
+                reprovados: row.web_reprovados, expirado: row.web_expirado,
+                pendente: row.web_pendente, naoEnviado: row.web_nao_enviado,
+                promo:  {total:0,cancelados:0,aprovados:0},
+                normal: {total:0,cancelados:0,aprovados:0}
+            },
             consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : row.consultores
         };
     }
@@ -339,7 +362,7 @@ function updateLastUpdateTime(){
 // ============================================================================
 function renderResumoDashboard(vendas, app, adim){
     const { geral, consultores, mes, ano } = vendas;
-    const pAprov = calcPercent(geral.aprovados, geral.total);
+    const pAprov = calcPercentDoc(geral.aprovados, geral.total, geral.cancelados||0);
     const pApp   = app  ? calcPercent(app.geral.sim, app.geral.total) : null;
     const pAdim  = adim ? adim.geral.percentualAprovado : null;
 
@@ -405,20 +428,166 @@ function buildRankingCompleto(consultores, mes, ano){
 }
 
 // ============================================================================
-// DASHBOARD: VENDAS
+// DASHBOARD: VENDAS — V21.0 (cancelados + promoção)
 // ============================================================================
-function renderDocumentacaoDashboard(d){
-    const {geral,vendasLoja,vendasWeb,consultores,mes,ano}=d;
-    const pG=calcPercent(geral.aprovados,geral.total),pL=calcPercent(vendasLoja.aprovados,vendasLoja.total),pW=calcPercent(vendasWeb.aprovados,vendasWeb.total);
-    const bySector=groupBySector(consultores);
-    const sectors=sortSectors(Object.keys(bySector),['VENDAS','RECEPCAO','REFILIACAO','WEB SITE','TELEVENDAS','OUTROS']);
-    dashboardContent.innerHTML=`
-    <h2 class="dash-title"><i class="fas fa-folder" style="color:var(--primary)"></i> Dashboard de Vendas — ${mes} ${ano}</h2>
-    <div class="main-cards">${cardDoc('Total de Vendas','fas fa-chart-bar',geral,pG)}${cardDoc('Vendas Loja','fas fa-store',vendasLoja,pL)}${cardDoc('Vendas Web/Tele','fas fa-globe',vendasWeb,pW)}</div>
-    <h3 class="section-title"><i class="fas fa-layer-group" style="color:var(--primary)"></i> Desempenho por Setor</h3>
-    ${sectors.map(sector=>{const list=bySector[sector];const tot=list.reduce((s,c)=>s+c.total,0),aprov=list.reduce((s,c)=>s+c.aprovados,0);const pct=calcPercent(aprov,tot);return `<div class="sector-card"><div class="sector-header"><div class="sector-title"><i class="${getSectorIcon(sector)}"></i> ${sector}<span class="sector-count">${list.length} consultor${list.length!==1?'es':''}</span></div><div class="metric-percent ${getPercentClass(pct)}">${pct}% aprovados</div></div><div class="consultant-grid">${list.sort((a,b)=>b.total-a.total).map(c=>{const p=calcPercent(c.aprovados,c.total);return `<div class="consultant-card"><div class="consultant-header"><div class="consultant-name">${c.nome}</div><div class="consultant-sector ${getSectorClass(sector)}">${sector}</div></div><div class="metric-grid">${metricItem('Total',c.total)}${metricItem('Aprovados',c.aprovados,'var(--success)')}${metricItem('Pendências',c.pendencias,'var(--danger)')}${metricItem('Não Enviado',c.naoEnviado,'var(--warning)')}${metricItem('Expirado',c.expirado,'var(--gray)')}${metricPercent('% Aprovados',p)}</div></div>`;}).join('')}</div></div>`;}).join('')}`;
+
+// % sobre base líquida (sem cancelados)
+function calcPercentDoc(aprovados, total, cancelados) {
+    const base = (total||0) - (cancelados||0);
+    return base > 0 ? Math.round((aprovados / base) * 100) : 0;
 }
-function cardDoc(t,icon,d,pct){ return `<div class="card card-doc"><div class="card-header"><div class="card-title">${t}</div><div class="card-icon"><i class="${icon}"></i></div></div><div class="metric-grid">${metricItem('Total Vendas',d.total)}${metricItem('Aprovados',d.aprovados,'var(--success)')}${metricItem('Pendências',d.pendencias,'var(--danger)')}${metricItem('Não Enviado',d.naoEnviado,'var(--warning)')}${metricItem('Expirado',d.expirado,'var(--gray)')}${metricPercent('% Aprovados',pct)}</div></div>`; }
+
+// Mini bloco promoção/normal dentro do card do consultor
+function promoMiniCards(c) {
+    if (!c.promo && !c.normal) return '';
+    const p  = c.promo  || {};
+    const n  = c.normal || {};
+    const pP = calcPercentDoc(p.aprovados||0, p.total||0, p.cancelados||0);
+    const pN = calcPercentDoc(n.aprovados||0, n.total||0, n.cancelados||0);
+    if (!p.total && !n.total) return '';
+    return `
+    <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div style="background:#f3e8ff;border-radius:8px;padding:8px;border-left:3px solid #7c3aed">
+            <div style="font-size:10px;font-weight:700;color:#7c3aed;margin-bottom:4px">▶ PROMOÇÃO</div>
+            <div style="font-size:11px;color:var(--text)">Total: <b>${p.total||0}</b></div>
+            <div style="font-size:11px;color:var(--text)">Cancelados: <b style="color:#991b1b">${p.cancelados||0}</b></div>
+            <div style="font-size:11px;color:var(--text)">Aprovados: <b style="color:var(--success)">${p.aprovados||0}</b></div>
+            <div style="margin-top:4px"><span class="metric-percent ${getPercentClass(pP)}">${pP}%</span></div>
+        </div>
+        <div style="background:#e0f2fe;border-radius:8px;padding:8px;border-left:3px solid #1e3a8a">
+            <div style="font-size:10px;font-weight:700;color:#1e3a8a;margin-bottom:4px">▶ NORMAL</div>
+            <div style="font-size:11px;color:var(--text)">Total: <b>${n.total||0}</b></div>
+            <div style="font-size:11px;color:var(--text)">Cancelados: <b style="color:#991b1b">${n.cancelados||0}</b></div>
+            <div style="font-size:11px;color:var(--text)">Aprovados: <b style="color:var(--success)">${n.aprovados||0}</b></div>
+            <div style="margin-top:4px"><span class="metric-percent ${getPercentClass(pN)}">${pN}%</span></div>
+        </div>
+    </div>`;
+}
+
+// Seção comparativo Promoção vs Normal (cards do topo)
+function promoSection(d, temPromo) {
+    if (!temPromo) return '';
+    const p  = d.geral.promo  || {};
+    const n  = d.geral.normal || {};
+    const lp = d.vendasLoja.promo  || {};
+    const ln = d.vendasLoja.normal || {};
+    const pP  = calcPercentDoc(p.aprovados||0,  p.total||0,  p.cancelados||0);
+    const pN  = calcPercentDoc(n.aprovados||0,  n.total||0,  n.cancelados||0);
+    const pLP = calcPercentDoc(lp.aprovados||0, lp.total||0, lp.cancelados||0);
+    const pLN = calcPercentDoc(ln.aprovados||0, ln.total||0, ln.cancelados||0);
+
+    function miniCard(label, obj, pct, cor) {
+        return `
+        <div class="card" style="border-left:4px solid ${cor}">
+            <div class="card-header" style="padding-bottom:8px">
+                <div class="card-title" style="font-size:13px;color:${cor}">${label}</div>
+            </div>
+            <div class="metric-grid">
+                ${metricItem('Total', obj.total||0)}
+                ${metricItem('Cancelados', obj.cancelados||0, '#991b1b')}
+                ${metricItem('Base líquida', (obj.total||0)-(obj.cancelados||0))}
+                ${metricItem('Aprovados', obj.aprovados||0, 'var(--success)')}
+                ${metricItem('Pendências', (obj.reprovados||0)+(obj.expirado||0)+(obj.pendente||0)+(obj.naoEnviado||0), 'var(--danger)')}
+                ${metricPercent('% Aprovados', pct)}
+            </div>
+        </div>`;
+    }
+
+    return `
+    <h3 class="section-title" style="color:#7c3aed">
+        <i class="fas fa-tags" style="color:#7c3aed"></i> Comparativo: Promoção vs Normal
+    </h3>
+    <div class="main-cards" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
+        ${miniCard('🟣 Promoção — Geral',  p,  pP,  '#7c3aed')}
+        ${miniCard('🔵 Normal — Geral',    n,  pN,  '#1e3a8a')}
+        ${miniCard('🟣 Promoção — Loja',   lp, pLP, '#6d28d9')}
+        ${miniCard('🔵 Normal — Loja',     ln, pLN, '#1e40af')}
+    </div>`;
+}
+
+function renderDocumentacaoDashboard(d) {
+    const { geral, vendasLoja, vendasWeb, consultores, mes, ano, temColunasPromo } = d;
+
+    // % sobre base líquida
+    const pG = calcPercentDoc(geral.aprovados,      geral.total,      geral.cancelados||0);
+    const pL = calcPercentDoc(vendasLoja.aprovados,  vendasLoja.total, vendasLoja.cancelados||0);
+    const pW = calcPercentDoc(vendasWeb.aprovados,   vendasWeb.total,  vendasWeb.cancelados||0);
+
+    const bySector = groupBySector(consultores);
+    const sectors  = sortSectors(Object.keys(bySector), ['VENDAS','RECEPCAO','REFILIACAO','WEB SITE','TELEVENDAS','OUTROS']);
+
+    dashboardContent.innerHTML = `
+    <h2 class="dash-title"><i class="fas fa-folder" style="color:var(--primary)"></i> Dashboard de Vendas — ${mes} ${ano}</h2>
+    <div class="main-cards">
+        ${cardDoc('Total de Vendas', 'fas fa-chart-bar', geral,      pG)}
+        ${cardDoc('Vendas Loja',     'fas fa-store',     vendasLoja, pL)}
+        ${cardDoc('Vendas Web/Tele', 'fas fa-globe',     vendasWeb,  pW)}
+    </div>
+    ${promoSection(d, temColunasPromo)}
+    <h3 class="section-title"><i class="fas fa-layer-group" style="color:var(--primary)"></i> Desempenho por Setor</h3>
+    ${sectors.map(sector => {
+        const list = bySector[sector];
+        const tot   = list.reduce((s,c) => s + c.total, 0);
+        const canc  = list.reduce((s,c) => s + (c.cancelados||0), 0);
+        const aprov = list.reduce((s,c) => s + c.aprovados, 0);
+        const pct   = calcPercentDoc(aprov, tot, canc);
+        return `
+        <div class="sector-card">
+            <div class="sector-header">
+                <div class="sector-title">
+                    <i class="${getSectorIcon(sector)}"></i> ${sector}
+                    <span class="sector-count">${list.length} consultor${list.length!==1?'es':''}</span>
+                </div>
+                <div class="metric-percent ${getPercentClass(pct)}">${pct}% aprovados</div>
+            </div>
+            <div class="consultant-grid">
+                ${list.sort((a,b) => b.total - a.total).map(c => {
+                    const p = calcPercentDoc(c.aprovados, c.total, c.cancelados||0);
+                    return `
+                    <div class="consultant-card">
+                        <div class="consultant-header">
+                            <div class="consultant-name">${c.nome}</div>
+                            <div class="consultant-sector ${getSectorClass(sector)}">${sector}</div>
+                        </div>
+                        <div class="metric-grid">
+                            ${metricItem('Total',        c.total)}
+                            ${metricItem('Cancelados',   c.cancelados||0, '#991b1b')}
+                            ${metricItem('Base líquida', c.total-(c.cancelados||0))}
+                            ${metricItem('Aprovados',    c.aprovados,     'var(--success)')}
+                            ${metricItem('Pendências',   c.pendencias,    'var(--danger)')}
+                            ${metricItem('Não Enviado',  c.naoEnviado,    'var(--warning)')}
+                            ${metricItem('Expirado',     c.expirado,      'var(--gray)')}
+                            ${metricPercent('% Aprovados', p)}
+                        </div>
+                        ${temColunasPromo ? promoMiniCards(c) : ''}
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`;
+    }).join('')}`;
+}
+
+function cardDoc(t, icon, d, pct) {
+    const canc = d.cancelados || 0;
+    const base = d.total - canc;
+    return `
+    <div class="card card-doc">
+        <div class="card-header">
+            <div class="card-title">${t}</div>
+            <div class="card-icon"><i class="${icon}"></i></div>
+        </div>
+        <div class="metric-grid">
+            ${metricItem('Total Vendas',  d.total)}
+            ${metricItem('Cancelados',    canc,          '#991b1b')}
+            ${metricItem('Base Líquida',  base)}
+            ${metricItem('Aprovados',     d.aprovados,   'var(--success)')}
+            ${metricItem('Pendências',    d.pendencias,  'var(--danger)')}
+            ${metricItem('Não Enviado',   d.naoEnviado,  'var(--warning)')}
+            ${metricItem('Expirado',      d.expirado,    'var(--gray)')}
+            ${metricPercent('% Aprovados', pct)}
+        </div>
+    </div>`;
+}
 
 // ============================================================================
 // DASHBOARD: APP
