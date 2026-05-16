@@ -318,20 +318,21 @@ document.addEventListener('DOMContentLoaded', function(){
     }
 
     loadDashboard();
+    initPeriodModal();
 });
 
-// ── loadDashboard — versão única com Supabase ──────────────────────────────
+// ── loadDashboard — skeleton + erro detalhado ─────────────────────────────
 async function loadDashboard(){
     if(currentDashboard === 'resumo'){ await loadResumoDashboard(); return; }
 
     const k      = cacheKey(currentDashboard, currentMonth, currentYear);
     const cached = getCached(k);
 
+    // ── Cache disponível: renderiza imediatamente e atualiza em background ──
     if(cached){
         window._dashboardData = cached;
         renderDashboard();
         updateLastUpdateTime();
-        // Atualiza em background sem travar a tela
         fetchData(currentDashboard, currentMonth, currentYear).then(r => {
             if(r.status==='success' && JSON.stringify(r.data) !== JSON.stringify(cached)){
                 setCache(k, r.data);
@@ -344,21 +345,27 @@ async function loadDashboard(){
         return;
     }
 
-    showProgressLoading('Buscando dados...', 10);
+    // ── Sem cache: mostra skeleton sobre o conteúdo existente ──────────────
+    showSkeleton();
     try{
-        updateProgress(40, 'Conectando...');
         const result = await fetchData(currentDashboard, currentMonth, currentYear);
-        updateProgress(90, 'Renderizando...');
+        hideSkeleton();
         if(result.status === 'success'){
             setCache(k, result.data);
             window._dashboardData = result.data;
             if(result.fonte === 'appscript') showToast('⚠️ Supabase sem dados — carregado do Apps Script');
             renderDashboard();
         } else {
-            showError(result.error || 'Erro ao carregar dados');
+            showError(result.error || 'Erro desconhecido', true);
         }
     }catch(err){
-        showError('Erro de conexão: ' + err.message);
+        hideSkeleton();
+        const online = navigator.onLine;
+        if(!online){
+            showError('Sem conexão com a internet. Verifique sua rede e tente novamente.', false);
+        } else {
+            showError('Não foi possível conectar ao servidor. Tente novamente em instantes.', true);
+        }
     }
     updateLastUpdateTime();
 }
@@ -401,27 +408,24 @@ async function loadResumoDashboard(){
     }
 
     let loaded = 0;
-    showProgressLoading('Iniciando...', 0);
+    showSkeleton();
 
     await Promise.all(eps.map(async ep => {
         const k = cacheKey(ep, currentMonth, currentYear);
         const cached = getCached(k);
-        if(cached){
-            results[ep] = cached; loaded++;
-            updateProgress(Math.round((loaded/eps.length)*100), `${labels[ep]} ✓`);
-            return;
-        }
+        if(cached){ results[ep] = cached; loaded++; return; }
         try{
-            updateProgress(Math.round((loaded/eps.length)*100), `Carregando ${labels[ep]}...`);
             const r = await fetchData(ep, currentMonth, currentYear);
             if(r.status==='success'){ setCache(k, r.data); results[ep]=r.data; }
         }catch(_){}
         loaded++;
-        updateProgress(Math.round((loaded/eps.length)*100), `${labels[ep]} ✓`);
     }));
 
-    hideLoading();
-    if(!results['documentacao']){ showError('Não foi possível carregar dados de Vendas.'); return; }
+    hideSkeleton();
+    if(!results['documentacao']){
+        showError('Não foi possível carregar os dados de Vendas. Verifique a conexão e tente novamente.', true);
+        return;
+    }
     renderResumoDashboard(results['documentacao'], results['app'], results['adimplencia']);
     updateLastUpdateTime();
 }
@@ -751,30 +755,49 @@ function getSectorIcon(s){ switch((s||'').toUpperCase()){case 'VENDAS':return 'f
 function scalesXY(){ return {x:{grid:{display:false},border:{display:false}},y:{grid:{color:C.border},border:{display:false}}}; }
 function legendTop(){ return {position:'top',labels:{boxWidth:12,padding:14}}; }
 
-// ── Loading / Progress / Toast ─────────────────────────────────────────────
-function showProgressLoading(label='Carregando...', pct=0){
-    Array.from(dashboardContent.children).forEach(c=>{ if(c!==loadingEl)c.remove(); });
+// ── Skeleton loading ──────────────────────────────────────────────────────
+function showSkeleton(){
     if(loadingEl) loadingEl.style.display='none';
-    let pl = document.getElementById('progressLoader');
-    if(pl) pl.remove();
-    pl = document.createElement('div');
-    pl.id = 'progressLoader';
-    pl.innerHTML = `<div class="progress-loader"><div class="progress-icon"><i class="fas fa-chart-line"></i></div><div class="progress-label" id="progressLabel">${label}</div><div class="progress-track"><div class="progress-bar" id="progressBar" style="width:${pct}%"></div></div><div class="progress-pct" id="progressPct">${pct}%</div></div>`;
-    dashboardContent.appendChild(pl);
+    let sk = document.getElementById('skeletonLoader');
+    if(sk) return; // já existe
+    sk = document.createElement('div');
+    sk.id = 'skeletonLoader';
+    sk.style.cssText = 'position:absolute;inset:0;background:rgba(240,247,242,0.85);z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;backdrop-filter:blur(2px);border-radius:inherit';
+    sk.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px">
+            <div style="width:44px;height:44px;border:3px solid #d1e8d9;border-top-color:#00a651;border-radius:50%;animation:spin .8s linear infinite"></div>
+            <span style="font-size:13px;font-weight:600;color:#5a7a65" id="skeletonMsg">Carregando dados...</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;width:min(420px,90%)">
+            <div class="sk-line" style="height:20px;border-radius:8px;width:60%"></div>
+            <div class="sk-line" style="height:100px;border-radius:12px"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+                <div class="sk-line" style="height:80px;border-radius:12px"></div>
+                <div class="sk-line" style="height:80px;border-radius:12px"></div>
+                <div class="sk-line" style="height:80px;border-radius:12px"></div>
+            </div>
+            <div class="sk-line" style="height:60px;border-radius:12px"></div>
+        </div>`;
+    // posiciona relativo ao dashboardContent
+    dashboardContent.style.position = 'relative';
+    dashboardContent.appendChild(sk);
 }
 
+function hideSkeleton(){
+    const sk = document.getElementById('skeletonLoader');
+    if(sk) sk.remove();
+    if(loadingEl) loadingEl.style.display='none';
+    const pl = document.getElementById('progressLoader');
+    if(pl) pl.remove();
+}
+
+// Mantida por compatibilidade com código existente
+function showProgressLoading(label='Carregando...', pct=0){ showSkeleton(); }
 function updateProgress(pct, label){
-    const bar=document.getElementById('progressBar'), lbl=document.getElementById('progressLabel'), num=document.getElementById('progressPct');
-    if(bar) bar.style.width=pct+'%';
-    if(lbl) lbl.textContent=label;
-    if(num) num.textContent=pct+'%';
+    const msg = document.getElementById('skeletonMsg');
+    if(msg) msg.textContent = label;
 }
-
-function hideLoading(){
-    if(loadingEl) loadingEl.style.display='none';
-    const pl=document.getElementById('progressLoader');
-    if(pl) pl.remove();
-}
+function hideLoading(){ hideSkeleton(); }
 
 function showToast(msg){
     let t=document.getElementById('toast');
@@ -783,7 +806,131 @@ function showToast(msg){
     setTimeout(()=>{ t.className='toast'; },2500);
 }
 
-function showError(msg){ hideLoading(); dashboardContent.innerHTML=`<div class="error-message"><i class="fas fa-exclamation-triangle" style="font-size:2rem;margin-bottom:12px;display:block;"></i><h3 style="margin-bottom:8px">Erro ao carregar dados</h3><p>${msg}</p><button class="btn btn-success" onclick="loadDashboard()" style="margin-top:16px;background:var(--danger);color:white"><i class="fas fa-redo"></i> Tentar Novamente</button></div>`; }
+// ── showError melhorado — pode tentar novamente ou voltar ao resumo ────────
+function showError(msg, podeRetentar=true){
+    hideSkeleton();
+    const online = navigator.onLine;
+    const iconeCor = online ? '#f59e0b' : '#ef4444';
+    const icone    = online ? 'fa-exclamation-triangle' : 'fa-wifi';
+    const dica     = online
+        ? 'Os dados podem estar indisponíveis no momento.'
+        : 'Verifique sua conexão com a internet.';
+
+    dashboardContent.innerHTML = `
+    <div class="error-message">
+        <div style="width:64px;height:64px;border-radius:50%;background:${iconeCor}1a;display:flex;align-items:center;justify-content:center;margin:0 auto 16px">
+            <i class="fas ${icone}" style="font-size:1.8rem;color:${iconeCor}"></i>
+        </div>
+        <h3 style="margin-bottom:8px;font-size:1.1rem">Não foi possível carregar</h3>
+        <p style="color:var(--text-muted);margin-bottom:4px">${msg}</p>
+        <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:20px">${dica}</p>
+        <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+            ${podeRetentar ? `<button class="btn" onclick="loadDashboard()"
+                style="background:#ef4444;color:white;padding:10px 20px">
+                <i class="fas fa-redo"></i> Tentar novamente
+            </button>` : ''}
+            <button class="btn btn-topbar-refresh" onclick="currentDashboard='resumo';loadDashboard()">
+                <i class="fas fa-home"></i> Voltar ao início
+            </button>
+        </div>
+    </div>`;
+}
+
+// ── Modal de período para mobile ───────────────────────────────────────────
+function initPeriodModal(){
+    // Botão flutuante que aparece só no mobile
+    const fab = document.createElement('button');
+    fab.id = 'periodFab';
+    fab.innerHTML = '<i class="fas fa-calendar-alt"></i>';
+    fab.title = 'Selecionar período';
+    document.body.appendChild(fab);
+
+    // Modal
+    const modal = document.createElement('div');
+    modal.id = 'periodModal';
+    modal.innerHTML = `
+        <div class="period-modal-backdrop" id="periodModalBackdrop"></div>
+        <div class="period-modal-sheet">
+            <div class="period-modal-handle"></div>
+            <div class="period-modal-title">
+                <i class="fas fa-calendar-alt" style="color:var(--primary)"></i>
+                Selecionar Período
+            </div>
+            <div class="period-modal-body">
+                <div class="select-group" style="width:100%">
+                    <label>Mês</label>
+                    <select id="monthSelectMobile">
+                        <option value="1">Janeiro</option><option value="2">Fevereiro</option>
+                        <option value="3">Março</option><option value="4">Abril</option>
+                        <option value="5">Maio</option><option value="6">Junho</option>
+                        <option value="7">Julho</option><option value="8">Agosto</option>
+                        <option value="9">Setembro</option><option value="10">Outubro</option>
+                        <option value="11">Novembro</option><option value="12">Dezembro</option>
+                    </select>
+                </div>
+                <div class="select-group" style="width:100%">
+                    <label>Ano</label>
+                    <select id="yearSelectMobile"></select>
+                </div>
+                <button class="btn btn-topbar-refresh" id="applyPeriodBtn" style="width:100%;justify-content:center;padding:12px">
+                    <i class="fas fa-check"></i> Aplicar
+                </button>
+            </div>
+        </div>`;
+    document.body.appendChild(modal);
+
+    // Popular anos no mobile
+    const anoAtual = new Date().getFullYear();
+    const yearMob = document.getElementById('yearSelectMobile');
+    for(let y = anoAtual; y >= anoAtual - 3; y--){
+        const opt = document.createElement('option');
+        opt.value = y; opt.textContent = y;
+        yearMob.appendChild(opt);
+    }
+
+    function syncMobile(){
+        const mm = document.getElementById('monthSelectMobile');
+        const ym = document.getElementById('yearSelectMobile');
+        if(mm) mm.value = currentMonth;
+        if(ym) ym.value  = currentYear;
+    }
+
+    function openModal(){
+        syncMobile();
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeModal(){
+        modal.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    fab.addEventListener('click', openModal);
+    document.getElementById('periodModalBackdrop').addEventListener('click', closeModal);
+
+    document.getElementById('applyPeriodBtn').addEventListener('click', () => {
+        const mm = document.getElementById('monthSelectMobile');
+        const ym = document.getElementById('yearSelectMobile');
+        currentMonth = parseInt(mm.value);
+        currentYear  = parseInt(ym.value);
+        // Sincroniza com os selects da topbar
+        if(monthSelect) monthSelect.value = currentMonth;
+        if(yearSelect)  yearSelect.value  = currentYear;
+        closeModal();
+        loadDashboard();
+    });
+
+    // Esconde FAB em dashboards sem período
+    function updateFabVisibility(){
+        fab.style.display = SEM_FILTRO.includes(currentDashboard) ? 'none' : 'flex';
+    }
+    updateFabVisibility();
+
+    // Observa troca de dashboard para atualizar visibilidade do FAB
+    const origLoad = loadDashboard;
+    window._origLoadDashboard = origLoad;
+    window.addEventListener('dashboardChange', updateFabVisibility);
+}
 
 // ── Export ─────────────────────────────────────────────────────────────────
 async function exportPage(){
