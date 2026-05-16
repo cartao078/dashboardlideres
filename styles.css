@@ -1464,3 +1464,163 @@ select:focus {
     .main-wrapper { margin-left: 0; }
     .dashboard-content { padding: 20px; }
 }
+
+/* ============================================================
+   SKELETON LOADING
+   ============================================================ */
+@keyframes sk-shimmer {
+    0%   { background-position: -600px 0; }
+    100% { background-position:  600px 0; }
+}
+
+.sk-line {
+    background: linear-gradient(90deg,
+        #e4ede7 25%, #d0e0d4 50%, #e4ede7 75%);
+    background-size: 600px 100%;
+    animation: sk-shimmer 1.4s ease infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   ERROR MESSAGE — melhorado
+   ============================================================ */
+.error-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 60px 24px;
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+.error-message h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+}
+
+.error-message p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+/* ============================================================
+   FAB — botão flutuante período (mobile)
+   ============================================================ */
+#periodFab {
+    display: none; /* visível só via media query */
+    position: fixed;
+    bottom: 24px;
+    right: 20px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    border: none;
+    font-size: 1.1rem;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    z-index: 150;
+    box-shadow: 0 4px 20px rgba(0,166,81,0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+#periodFab:hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 24px rgba(0,166,81,0.5);
+}
+
+@media (max-width: 900px) {
+    #periodFab {
+        display: flex;
+    }
+}
+
+/* ============================================================
+   MODAL DE PERÍODO — bottom sheet mobile
+   ============================================================ */
+#periodModal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+}
+
+#periodModal.open {
+    display: block;
+}
+
+.period-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    animation: fadeIn .2s ease;
+}
+
+.period-modal-sheet {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-radius: 20px 20px 0 0;
+    padding: 16px 24px 36px;
+    animation: slideUp .25s cubic-bezier(.4,0,.2,1);
+    max-width: 480px;
+    margin: 0 auto;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.period-modal-handle {
+    width: 40px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+}
+
+.period-modal-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.period-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.period-modal-body .select-group label {
+    font-size: 0.8rem;
+    margin-bottom: 4px;
+}
+
+.period-modal-body select {
+    width: 100%;
+    min-width: unset;
+    padding: 12px 16px;
+    font-size: 1rem;
+}
