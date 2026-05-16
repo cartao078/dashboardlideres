@@ -3,78 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard V21.0 - CDT CEILÂNDIA</title>
+    <title>Dashboard V21.1 - CDT CEILÂNDIA</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-    <!-- ═══════════════════════════════════════════════════════
-         SIDEBAR
-    ═══════════════════════════════════════════════════════ -->
     <aside class="sidebar" id="sidebar">
 
-        <!-- Logo -->
+        <button class="sidebar-collapse-btn" id="collapseBtn" title="Recolher menu">
+            <i class="fas fa-chevron-left" id="collapseIcon"></i>
+        </button>
+
         <div class="sidebar-logo">
             <img src="logo.png" alt="Cartão de Todos" class="sidebar-logo-img">
+            <i class="fas fa-leaf sidebar-logo-icon"></i>
             <div class="sidebar-logo-label">CDT CEILÂNDIA</div>
         </div>
 
-        <!-- Nav -->
         <nav class="sidebar-nav">
             <div class="sidebar-section-label">DASHBOARDS</div>
-
-            <button class="sidebar-btn active" data-dashboard="resumo">
+            <button class="sidebar-btn active" data-dashboard="resumo" data-tooltip="Resumo">
                 <span class="sidebar-btn-icon"><i class="fas fa-chart-line"></i></span>
                 <span class="sidebar-btn-label">Resumo</span>
             </button>
-            <button class="sidebar-btn" data-dashboard="documentacao">
+            <button class="sidebar-btn" data-dashboard="documentacao" data-tooltip="Vendas">
                 <span class="sidebar-btn-icon"><i class="fas fa-folder-open"></i></span>
                 <span class="sidebar-btn-label">Vendas</span>
             </button>
-            <button class="sidebar-btn" data-dashboard="app">
+            <button class="sidebar-btn" data-dashboard="app" data-tooltip="App">
                 <span class="sidebar-btn-icon"><i class="fas fa-mobile-alt"></i></span>
                 <span class="sidebar-btn-label">App</span>
             </button>
-            <button class="sidebar-btn" data-dashboard="adimplencia">
+            <button class="sidebar-btn" data-dashboard="adimplencia" data-tooltip="Adimplência">
                 <span class="sidebar-btn-icon"><i class="fas fa-credit-card"></i></span>
                 <span class="sidebar-btn-label">Adimplência</span>
             </button>
-            <button class="sidebar-btn" data-dashboard="recorrencia">
+            <button class="sidebar-btn" data-dashboard="recorrencia" data-tooltip="Recorrência">
                 <span class="sidebar-btn-icon"><i class="fas fa-redo"></i></span>
                 <span class="sidebar-btn-label">Recorrência</span>
             </button>
-            <button class="sidebar-btn" data-dashboard="recorrencia_vendedor">
+            <button class="sidebar-btn" data-dashboard="recorrencia_vendedor" data-tooltip="Rec. Vendedor">
                 <span class="sidebar-btn-icon"><i class="fas fa-handshake"></i></span>
                 <span class="sidebar-btn-label">Rec. Vendedor</span>
             </button>
-            <button class="sidebar-btn" data-dashboard="refuturiza">
+            <button class="sidebar-btn" data-dashboard="refuturiza" data-tooltip="Refuturiza">
                 <span class="sidebar-btn-icon"><i class="fas fa-book-open"></i></span>
                 <span class="sidebar-btn-label">Refuturiza</span>
             </button>
-            <button class="sidebar-btn" data-dashboard="campanha14">
+            <button class="sidebar-btn" data-dashboard="campanha14" data-tooltip="Campanha 14°">
                 <span class="sidebar-btn-icon"><i class="fas fa-trophy"></i></span>
                 <span class="sidebar-btn-label">Campanha 14°</span>
             </button>
         </nav>
 
-        <!-- Sidebar footer -->
         <div class="sidebar-footer">
-            <div class="sidebar-footer-label">Versão 21.0</div>
-            <div class="sidebar-footer-sub">API Apps Script + Supabase</div>
+            <div class="sidebar-footer-label">Versão 21.1</div>
+            <div class="sidebar-footer-sub">Apps Script + Supabase</div>
         </div>
 
     </aside>
 
-    <!-- ═══════════════════════════════════════════════════════
-         MAIN AREA
-    ═══════════════════════════════════════════════════════ -->
-    <div class="main-wrapper">
+    <div class="main-wrapper" id="mainWrapper">
 
-        <!-- Topbar -->
         <header class="topbar">
             <div class="topbar-left">
-                <!-- Hamburguer (mobile) -->
                 <button class="sidebar-toggle" id="sidebarToggle" aria-label="Menu">
                     <i class="fas fa-bars"></i>
                 </button>
@@ -121,7 +114,6 @@
             </div>
         </header>
 
-        <!-- Content -->
         <main class="dashboard-content" id="dashboardContent">
             <div class="loading" id="loading" style="display:flex;">
                 <div class="spinner"></div>
@@ -129,14 +121,12 @@
             </div>
         </main>
 
-        <!-- Footer -->
         <footer class="footer">
-            <p>Dashboard V21.0 &nbsp;|&nbsp; CDT CEILÂNDIA &nbsp;|&nbsp; API Google Apps Script + Supabase</p>
+            <p>Dashboard V21.1 &nbsp;|&nbsp; CDT CEILÂNDIA &nbsp;|&nbsp; API Google Apps Script + Supabase</p>
         </footer>
 
     </div>
 
-    <!-- Overlay mobile -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
