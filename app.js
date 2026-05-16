@@ -262,24 +262,58 @@ document.addEventListener('DOMContentLoaded', function(){
     refreshBtn.addEventListener('click',   () => { invalidateCache(cacheKey(currentDashboard, currentMonth, currentYear)); loadDashboard(); });
     downloadBtn.addEventListener('click',  exportPage);
 
-    // ── Hamburguer mobile ─────────────────────────────────────────────────
-    const sidebarToggle  = document.getElementById('sidebarToggle');
+    // ── Elementos ─────────────────────────────────────────────────────────
     const sidebar        = document.getElementById('sidebar');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const sidebarToggle  = document.getElementById('sidebarToggle');
+    const collapseBtn    = document.getElementById('collapseBtn');
+    const collapseIcon   = document.getElementById('collapseIcon');
 
-    function closeSidebarMobile(){
-        if(sidebar)        sidebar.classList.remove('open');
-        if(sidebarOverlay) sidebarOverlay.classList.remove('open');
+    // ── Colapso desktop (persiste no localStorage) ────────────────────────
+    const COLLAPSE_KEY = 'sidebar_collapsed';
+
+    function setSidebarCollapsed(collapsed) {
+        if (collapsed) {
+            sidebar.classList.add('collapsed');
+            if (collapseIcon) {
+                collapseIcon.classList.remove('fa-chevron-left');
+                collapseIcon.classList.add('fa-chevron-right');
+            }
+        } else {
+            sidebar.classList.remove('collapsed');
+            if (collapseIcon) {
+                collapseIcon.classList.remove('fa-chevron-right');
+                collapseIcon.classList.add('fa-chevron-left');
+            }
+        }
+        try { localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0'); } catch(e){}
     }
 
-    if(sidebarToggle){
+    // Restaura estado salvo
+    try {
+        if (localStorage.getItem(COLLAPSE_KEY) === '1') setSidebarCollapsed(true);
+    } catch(e){}
+
+    if (collapseBtn) {
+        collapseBtn.addEventListener('click', () => {
+            setSidebarCollapsed(!sidebar.classList.contains('collapsed'));
+        });
+    }
+
+    // ── Hamburguer mobile ─────────────────────────────────────────────────
+    function closeSidebarMobile() {
+        if (sidebar)        sidebar.classList.remove('open');
+        if (sidebarOverlay) sidebarOverlay.classList.remove('open');
+    }
+
+    if (sidebarToggle) {
         sidebarToggle.addEventListener('click', () => {
             sidebar.classList.toggle('open');
             sidebarOverlay.classList.toggle('open');
         });
     }
 
-    if(sidebarOverlay){
+    if (sidebarOverlay) {
         sidebarOverlay.addEventListener('click', closeSidebarMobile);
     }
 
