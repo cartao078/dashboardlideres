@@ -2220,23 +2220,46 @@ function inicializarPlanilhaCampanha() {
   const shDest = getOrCreateCampanhaSheet(ss, "Destaques",
     ["ID","Nome","Setor","Unidade","Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov"]);
 
-  const colaboradoresIniciais = [
-    [1,  "THIAGO DA SILVA CARDOSO",          "Recepção",   "Ceilândia"],
-    [2,  "MILENA VITORIA LEMOS DA SILVA",     "Recepção",   "Ceilândia"],
-    [3,  "DANIELLE LIMA BRITO",               "Recepção",   "Ceilândia"],
-    [4,  "FABIANA DA SILVA",                  "Refiliação", "Ceilândia"],
-    [5,  "INGRID CARVALHO RODRIGUES",         "Refiliação", "Ceilândia"],
-    [6,  "JENIFFER THAYNNA LIMA DA ROCHA",    "Refiliação", "Ceilândia"],
-    [7,  "WANESSA EVELYN CARVALHO",           "Refiliação", "Ceilândia"],
-    [8,  "KATIANE FERREIRA DOS SANTOS",       "Homologação","Ceilândia"],
-    [9,  "FRANCISCO ROGEAN ALVES NASCIMENTO", "Vendas",     "Ceilândia"],
-    [10, "LAYANE MACHADO DA CUNHA",           "Vendas",     "Ceilândia"],
-    [11, "RAFAEL DOS SANTOS DE JESUS",        "Vendas",     "Ceilândia"],
-    [12, "VANESSA CRISTINA MARTINS SOUZA",    "Vendas",     "Ceilândia"],
-    [13, "THAYNARA ARAUJO DE OLIVEIRA",       "Vendas",     "Ceilândia"],
-    [14, "MARIA MADALENA SILVA FURTADO",      "Vendas",     "Ceilândia"],
-    [15, "JOISCIANE DE SOUSA SILVA",          "Vendas",     "Ceilândia"],
-    [16, "MARCUS LUIZ ARAUJO CUNHA",          "Vendas",     "Ceilândia"],
+const colaboradoresIniciais = [
+    // RECEPÇÃO
+    [1,  "THIAGO DA SILVA CARDOSO",                   "Recepção",              "Ceilândia"],
+    [2,  "MILENA VITORIA LEMOS DA SILVA",              "Recepção",              "Ceilândia"],
+    [3,  "DANIELLE LIMA BRITO",                        "Recepção",              "Ceilândia"],
+    // REFILIAÇÃO
+    [4,  "INGRID CARVALHO RODRIGUES",                  "Refiliação",            "Ceilândia"],
+    [5,  "JENIFFER THAYNNA LIMA DA ROCHA",             "Refiliação",            "Ceilândia"],
+    [6,  "WANESSA EVELYN CARVALHO",                    "Refiliação",            "Ceilândia"],
+    // HOMOLOGAÇÃO
+    [7,  "KATIANE FERREIRA DOS SANTOS",                "Homologação",           "Ceilândia"],
+    // VENDAS
+    [8,  "FRANCISCO ROGEAN ALVES NASCIMENTO",          "Vendas",                "Ceilândia"],
+    [9,  "THAYNARA ARAUJO DE OLIVEIRA",                "Vendas",                "Ceilândia"],
+    [10, "JOISCIANE DE SOUSA SILVA",                   "Vendas",                "Ceilândia"],
+    [11, "MARIA MADALENA SILVA FURTADO",               "Vendas",                "Ceilândia"],
+    [12, "MARCUS LUIZ ARAUJO CUNHA",                   "Vendas",                "Ceilândia"],
+    // PARCERIAS
+    [13, "RAFAEL DOS SANTOS DE JESUS",                 "Parcerias",             "Ceilândia"],
+    [14, "THARIK MENEZES SANTIAGO",                    "Parcerias",             "Ceilândia"],
+    // ADIMPLÊNCIA
+    [15, "ALYNNE GABRIELLE DO NASCIMENTO RIBEIRO",     "Adimplência",           "Ceilândia"],
+    [16, "MARIANA NOGUEIRA DOS SANTOS",                "Adimplência",           "Ceilândia"],
+    [17, "FLÁVIA ARAÚJO MARQUES",                      "Adimplência",           "Ceilândia"],
+    [18, "RHYAN CARLOS FRANCO PEREIRA",                "Adimplência",           "Ceilândia"],
+    [19, "KAIQUE DE SOUZA ANDRADE",                    "Adimplência",           "Ceilândia"],
+    [20, "ALEXANDRA LISBOA AMORIM",                    "Adimplência",           "Ceilândia"],
+    [21, "TAYNARA RODRIGUES DA CRUZ",                  "Adimplência",           "Ceilândia"],
+    // LÍDERES
+    [22, "FABIANA DA SILVA",                           "Líderes",               "Ceilândia"],
+    [23, "CLEONICE CONCEICAO DE MARIA",                "Líderes",               "Ceilândia"],
+    [24, "ESTEFFANNIE MENDES DA SILVA",                "Líderes",               "Ceilândia"],
+    // RETENÇÃO
+    [25, "ISAAC PEREIRA NUNES FERREIRA",               "Retenção",              "Ceilândia"],
+    [26, "JACKSON RYLLER DOS SANTOS",                  "Retenção",              "Ceilândia"],
+    // PREVISÃO DE DESAFILIAÇÃO
+    [27, "ALICE VITORIA LEAL FERRAZ",                  "Previsão Desafiliação", "Ceilândia"],
+    // COORDENADORES
+    [28, "WILLIAN CARLOS RESENDE GONÇALVES",           "Coordenadores",         "Ceilândia"],
+    [29, "JOSENILDO CAMILO DOS SANTOS FILHO",          "Coordenadores",         "Ceilândia"],
   ];
 
   if (shDest.getLastRow() <= 1) {
