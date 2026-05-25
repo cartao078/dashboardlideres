@@ -57,6 +57,9 @@ function invalidateCache(k){
 // ============================================================================
 
 async function fetchSupabase(endpoint, mes, ano) {
+    // campanha14 nunca está no Supabase — vai direto ao Apps Script
+    if (endpoint === 'campanha14') return null;
+
     try {
         let url;
         const headers = {
@@ -158,11 +161,30 @@ function rowToData(endpoint, row) {
 async function fetchData(endpoint, mes, ano) {
     const dadosSupabase = await fetchSupabase(endpoint, mes, ano);
     if (dadosSupabase) return { status: 'success', data: dadosSupabase, fonte: 'supabase' };
+
     const url = buildUrl(endpoint, mes, ano);
-    const resp = await fetch(url);
-    const json = await resp.json();
-    if (json.status === 'success') json.fonte = 'appscript';
-    return json;
+    try {
+        const resp = await fetch(url);
+        if (!resp.ok) {
+            console.warn(`[Apps Script] HTTP ${resp.status} para endpoint "${endpoint}"`);
+            return {
+                status: 'error',
+                error: `Servidor retornou erro ${resp.status}. Tente novamente em instantes.`
+            };
+        }
+        const json = await resp.json();
+        if (json.status === 'success') json.fonte = 'appscript';
+        return json;
+    } catch (err) {
+        const isOffline = !navigator.onLine || err instanceof TypeError;
+        console.error(`[Apps Script] Falha no endpoint "${endpoint}":`, err);
+        return {
+            status: 'error',
+            error: isOffline
+                ? 'Sem conexão com a internet.'
+                : 'Não foi possível conectar ao servidor de dados.'
+        };
+    }
 }
 
 // ── Auto-refresh silencioso a cada 30min ──────────────────────────────────
@@ -253,6 +275,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
             // Fecha sidebar no mobile após clicar
             closeSidebarMobile();
+            if (window.updateFabVisibility) window.updateFabVisibility();
             loadDashboard();
         });
     });
@@ -926,10 +949,8 @@ function initPeriodModal(){
     }
     updateFabVisibility();
 
-    // Observa troca de dashboard para atualizar visibilidade do FAB
-    const origLoad = loadDashboard;
-    window._origLoadDashboard = origLoad;
-    window.addEventListener('dashboardChange', updateFabVisibility);
+    // Expõe para que o clique do sidebar possa atualizar a visibilidade do FAB
+    window.updateFabVisibility = updateFabVisibility;
 }
 
 // ── Export ─────────────────────────────────────────────────────────────────
@@ -947,7 +968,7 @@ async function exportPage(){
         link.download=`Dashboard_${nome}${periodo}.png`;
         link.href=canvas.toDataURL('image/png');
         link.click();
-    }catch(err){ alert('Erro ao gerar imagem. Tente novamente.'); }
+    }catch(err){ showToast('❌ Erro ao gerar imagem. Tente novamente.'); }
     finally{ btn.innerHTML=orig; btn.disabled=false; }
 }
 function getMonthName(m){ return ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][m-1]; }
