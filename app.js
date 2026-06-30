@@ -547,15 +547,15 @@ function promoMiniCards(c) {
     if (!p.total && !n.total) return '';
     return `
     <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div style="background:#f3e8ff;border-radius:8px;padding:8px;border-left:3px solid #7c3aed">
-            <div style="font-size:10px;font-weight:700;color:#7c3aed;margin-bottom:4px">▶ PROMOÇÃO</div>
+        <div style="background:var(--primary-light);border-radius:8px;padding:8px;border-left:3px solid var(--primary)">
+            <div style="font-size:10px;font-weight:700;color:var(--primary-dark);margin-bottom:4px">▶ PROMOÇÃO</div>
             <div style="font-size:11px;color:var(--text)">Total: <b>${p.total||0}</b></div>
             <div style="font-size:11px;color:var(--text)">Cancelados: <b style="color:#991b1b">${p.cancelados||0}</b></div>
             <div style="font-size:11px;color:var(--text)">Aprovados: <b style="color:var(--success)">${p.aprovados||0}</b></div>
             <div style="margin-top:4px"><span class="metric-percent ${getPercentClass(pP)}">${pP}%</span></div>
         </div>
-        <div style="background:#e0f2fe;border-radius:8px;padding:8px;border-left:3px solid #1e3a8a">
-            <div style="font-size:10px;font-weight:700;color:#1e3a8a;margin-bottom:4px">▶ NORMAL</div>
+        <div style="background:#f0f9e8;border-radius:8px;padding:8px;border-left:3px solid var(--accent)">
+            <div style="font-size:10px;font-weight:700;color:var(--accent-dark);margin-bottom:4px">▶ NORMAL</div>
             <div style="font-size:11px;color:var(--text)">Total: <b>${n.total||0}</b></div>
             <div style="font-size:11px;color:var(--text)">Cancelados: <b style="color:#991b1b">${n.cancelados||0}</b></div>
             <div style="font-size:11px;color:var(--text)">Aprovados: <b style="color:var(--success)">${n.aprovados||0}</b></div>
@@ -594,14 +594,14 @@ function promoSection(d, temPromo) {
     }
 
     return `
-    <h3 class="section-title" style="color:#7c3aed">
-        <i class="fas fa-tags" style="color:#7c3aed"></i> Comparativo: Promoção vs Normal
+    <h3 class="section-title" style="color:var(--primary-dark)">
+        <i class="fas fa-tags" style="color:var(--primary-dark)"></i> Comparativo: Promoção vs Normal
     </h3>
     <div class="main-cards" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
-        ${miniCard('🟣 Promoção — Geral',  p,  pP,  '#7c3aed')}
-        ${miniCard('🔵 Normal — Geral',    n,  pN,  '#1e3a8a')}
-        ${miniCard('🟣 Promoção — Loja',   lp, pLP, '#6d28d9')}
-        ${miniCard('🔵 Normal — Loja',     ln, pLN, '#1e40af')}
+        ${miniCard('Promoção — Geral',  p,  pP,  'var(--primary)')}
+        ${miniCard('Normal — Geral',    n,  pN,  'var(--accent-dark)')}
+        ${miniCard('Promoção — Loja',   lp, pLP, 'var(--primary-dark)')}
+        ${miniCard('Normal — Loja',     ln, pLN, 'var(--accent-dark)')}
     </div>`;
 }
 
@@ -758,9 +758,9 @@ function renderRefuturizaDashboard(d){
     if(!geral||!consultores){showError('Dados do Refuturiza não encontrados');return;}
     const pG=calcPercent(geral.comLigacao,geral.total);
     dashboardContent.innerHTML=`
-    <h2 class="dash-title"><i class="fas fa-book" style="color:#0ea5e9"></i> Dashboard Refuturiza — ${mes} ${ano}</h2>
+    <h2 class="dash-title"><i class="fas fa-book" style="color:var(--accent-dark)"></i> Dashboard Refuturiza — ${mes} ${ano}</h2>
     <div class="card card-refut" style="max-width:500px;margin:0 auto 28px"><div class="card-header"><div class="card-title">Refuturiza — Total da Loja</div><div class="card-icon"><i class="fas fa-book-open"></i></div></div><div class="metric-grid">${metricItem('Total',geral.total||0)}${metricItem('Com Ligação',geral.comLigacao||0,'var(--success)')}${metricItem('Sem Ligação',geral.semLigacao||0,'var(--danger)')}${metricItem('Cancelados',geral.cancelado||0,'var(--gray)')}${metricPercent('% Com Ligação',pG)}</div></div>
-    ${consultores.length>0?`<h3 class="section-title"><i class="fas fa-users" style="color:#0ea5e9"></i> Desempenho por Consultor (${consultores.length})</h3><div class="consultant-grid">${consultores.map(c=>{const p=calcPercent(c.comLigacao||0,c.total);return `<div class="consultant-card"><div class="consultant-header"><div class="consultant-name">${c.nome}</div><div class="consultant-sector" style="background:rgba(14,165,233,0.1);color:#0ea5e9">REFUTURIZA</div></div><div class="metric-grid">${metricItem('Total',c.total||0)}${metricItem('Com Ligação',c.comLigacao||0,'var(--success)')}${metricItem('Sem Ligação',c.semLigacao||0,'var(--danger)')}${metricItem('Cancelados',c.cancelado||0,'var(--gray)')}${metricPercent('% Com Ligação',p)}</div></div>`;}).join('')}</div><div class="card" style="margin-top:36px;background:linear-gradient(90deg,#0ea5e9,#3b82f6);color:white"><div class="card-header" style="border-bottom-color:rgba(255,255,255,0.2)"><div class="card-title" style="color:white">📊 Resumo Final</div><div class="card-icon" style="background:rgba(255,255,255,0.2)"><i class="fas fa-graduation-cap"></i></div></div><div class="metric-grid">${metricItemWhite('Total Consultores',consultores.length)}${metricItemWhite('Total Cursos',geral.total||0)}${metricItemWhite('Média por Consultor',consultores.length>0?Math.round((geral.total||0)/consultores.length):0)}${metricItemWhite('Taxa de Contato',pG+'%')}</div></div>`:`<div style="text-align:center;padding:40px;color:var(--gray)"><i class="fas fa-info-circle" style="font-size:2.5rem;margin-bottom:16px;display:block;"></i><h3>Nenhum dado para ${mes} ${ano}</h3></div>`}`;
+    ${consultores.length>0?`<h3 class="section-title"><i class="fas fa-users" style="color:var(--accent-dark)"></i> Desempenho por Consultor (${consultores.length})</h3><div class="consultant-grid">${consultores.map(c=>{const p=calcPercent(c.comLigacao||0,c.total);return `<div class="consultant-card"><div class="consultant-header"><div class="consultant-name">${c.nome}</div><div class="consultant-sector" style="background:var(--primary-light);color:var(--accent-dark)">REFUTURIZA</div></div><div class="metric-grid">${metricItem('Total',c.total||0)}${metricItem('Com Ligação',c.comLigacao||0,'var(--success)')}${metricItem('Sem Ligação',c.semLigacao||0,'var(--danger)')}${metricItem('Cancelados',c.cancelado||0,'var(--gray)')}${metricPercent('% Com Ligação',p)}</div></div>`;}).join('')}</div><div class="card" style="margin-top:36px;background:linear-gradient(135deg,var(--primary),#007a3d);color:white"><div class="card-header" style="border-bottom-color:rgba(255,255,255,0.2)"><div class="card-title" style="color:white">Resumo Final</div><div class="card-icon" style="background:rgba(255,255,255,0.2)"><i class="fas fa-graduation-cap"></i></div></div><div class="metric-grid">${metricItemWhite('Total Consultores',consultores.length)}${metricItemWhite('Total Cursos',geral.total||0)}${metricItemWhite('Média por Consultor',consultores.length>0?Math.round((geral.total||0)/consultores.length):0)}${metricItemWhite('Taxa de Contato',pG+'%')}</div></div>`:`<div style="text-align:center;padding:40px;color:var(--gray)"><i class="fas fa-info-circle" style="font-size:2.5rem;margin-bottom:16px;display:block;"></i><h3>Nenhum dado para ${mes} ${ano}</h3></div>`}`;
 }
 
 // ============================================================================
@@ -1005,7 +1005,7 @@ function renderCampanha14Dashboard(d) {
             if (dest)     { bg='#dcfce7'; color='#166534'; border='#16a34a'; icon='<i class="fas fa-check" style="font-size:9px"></i>'; }
             else if (fut) { bg='#f8fafc'; color='#94a3b8'; border='#e2e8f0'; icon=m; }
             else          { bg='#fee2e2'; color='#991b1b'; border='#fca5a5'; icon=m; }
-            const ring = atual ? ';outline:2px solid #0ea5e9;outline-offset:2px' : '';
+            const ring = atual ? ';outline:2px solid var(--teal);outline-offset:2px' : '';
             return `<div title="${m}" style="width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;background:${bg};color:${color};border:1px solid ${border}${ring}">${icon}</div>`;
         }).join('');
     }
