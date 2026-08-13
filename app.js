@@ -1,5 +1,5 @@
 // ============================================================================
-// DASHBOARD V20.10 - app.js — COM SUPABASE
+// DASHBOARD V21.1 - app.js — COM SUPABASE
 // ============================================================================
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbxDxzl4IcFJcFXO5KsO5D7Zd_9PR-Q67O6NhIPXjHsJX0pGzx4WawDgmfBi_vx5Ppwr8A/exec';
@@ -57,7 +57,6 @@ function invalidateCache(k){
 // ============================================================================
 
 async function fetchSupabase(endpoint, mes, ano) {
-    // campanha14 nunca está no Supabase — vai direto ao Apps Script
     if (endpoint === 'campanha14') return null;
 
     try {
@@ -154,7 +153,6 @@ function rowToData(endpoint, row) {
             consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : row.consultores
         };
     }
-    // campanha14 não passa por Supabase — vem direto do Apps Script
     return null;
 }
 
@@ -231,7 +229,6 @@ document.addEventListener('DOMContentLoaded', function(){
     Chart.defaults.font.family="'Plus Jakarta Sans', sans-serif";
     Chart.defaults.font.size=12; Chart.defaults.color='#5a7a65';
 
-    // Sidebar usa .sidebar-btn em vez de .dashboard-btn
     dashboardBtns    = document.querySelectorAll('.sidebar-btn');
     monthSelect      = document.getElementById('monthSelect');
     yearSelect       = document.getElementById('yearSelect');
@@ -242,7 +239,6 @@ document.addEventListener('DOMContentLoaded', function(){
     lastUpdateEl     = document.getElementById('lastUpdate');
     periodSelector   = document.getElementById('periodSelector');
 
-    // ── Anos ──────────────────────────────────────────────────────────────
     const anoAtual = new Date().getFullYear();
     for(let y = anoAtual; y >= anoAtual - 3; y--){
         const opt = document.createElement('option');
@@ -252,7 +248,6 @@ document.addEventListener('DOMContentLoaded', function(){
     monthSelect.value = currentMonth;
     yearSelect.value  = currentYear;
 
-    // ── Sidebar nav ────────────────────────────────────────────────────────
     const topbarTitle = document.getElementById('topbarTitle');
     const TITLES = {
         resumo:'Resumo Geral', documentacao:'Vendas / Documentação',
@@ -268,12 +263,10 @@ document.addEventListener('DOMContentLoaded', function(){
             currentDashboard = btn.dataset.dashboard;
             if(topbarTitle) topbarTitle.textContent = TITLES[currentDashboard] || currentDashboard;
 
-            // Oculta seletor de período para dashboards sem filtro de mês
             if(periodSelector){
                 periodSelector.style.display = SEM_FILTRO.includes(currentDashboard) ? 'none' : 'flex';
             }
 
-            // Fecha sidebar no mobile após clicar
             closeSidebarMobile();
             if (window.updateFabVisibility) window.updateFabVisibility();
             loadDashboard();
@@ -285,14 +278,12 @@ document.addEventListener('DOMContentLoaded', function(){
     refreshBtn.addEventListener('click',   () => { invalidateCache(cacheKey(currentDashboard, currentMonth, currentYear)); loadDashboard(); });
     downloadBtn.addEventListener('click',  exportPage);
 
-    // ── Elementos ─────────────────────────────────────────────────────────
     const sidebar        = document.getElementById('sidebar');
     const sidebarOverlay = document.getElementById('sidebarOverlay');
     const sidebarToggle  = document.getElementById('sidebarToggle');
     const collapseBtn    = document.getElementById('collapseBtn');
     const collapseIcon   = document.getElementById('collapseIcon');
 
-    // ── Colapso desktop (persiste no localStorage) ────────────────────────
     const COLLAPSE_KEY = 'sidebar_collapsed';
 
     function setSidebarCollapsed(collapsed) {
@@ -312,7 +303,6 @@ document.addEventListener('DOMContentLoaded', function(){
         try { localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0'); } catch(e){}
     }
 
-    // Restaura estado salvo
     try {
         if (localStorage.getItem(COLLAPSE_KEY) === '1') setSidebarCollapsed(true);
     } catch(e){}
@@ -323,7 +313,6 @@ document.addEventListener('DOMContentLoaded', function(){
         });
     }
 
-    // ── Hamburguer mobile ─────────────────────────────────────────────────
     function closeSidebarMobile() {
         if (sidebar)        sidebar.classList.remove('open');
         if (sidebarOverlay) sidebarOverlay.classList.remove('open');
@@ -351,7 +340,6 @@ async function loadDashboard(){
     const k      = cacheKey(currentDashboard, currentMonth, currentYear);
     const cached = getCached(k);
 
-    // ── Cache disponível: renderiza imediatamente e atualiza em background ──
     if(cached){
         window._dashboardData = cached;
         renderDashboard();
@@ -368,7 +356,6 @@ async function loadDashboard(){
         return;
     }
 
-    // ── Sem cache: mostra skeleton sobre o conteúdo existente ──────────────
     showSkeleton();
     try{
         const result = await fetchData(currentDashboard, currentMonth, currentYear);
@@ -403,7 +390,7 @@ function renderDashboard(){
         case 'recorrencia':          renderRecorrenciaDashboard(data);         break;
         case 'recorrencia_vendedor': renderRecorrenciaVendedorDashboard(data); break;
         case 'refuturiza':           renderRefuturizaDashboard(data);          break;
-        case 'campanha14':           renderCampanha14Dashboard(data);          break; // ADICIONADO
+        case 'campanha14':           renderCampanha14Dashboard(data);          break;
         default: showError('Dashboard não encontrado: ' + currentDashboard);
     }
 }
@@ -420,7 +407,6 @@ async function loadResumoDashboard(){
         eps.forEach(ep => { results[ep] = getCached(cacheKey(ep, currentMonth, currentYear)); });
         renderResumoDashboard(results['documentacao'], results['app'], results['adimplencia']);
         updateLastUpdateTime();
-        // Atualiza em background
         Promise.all(eps.map(async ep => {
             const r = await fetchData(ep, currentMonth, currentYear);
             if(r.status==='success'){ setCache(cacheKey(ep,currentMonth,currentYear), r.data); results[ep]=r.data; }
@@ -528,8 +514,104 @@ function buildRankingCompleto(consultores, mes, ano){
 }
 
 // ============================================================================
-// DASHBOARD: VENDAS — V21.0 (cancelados + promoção)
+// DASHBOARD: VENDAS — V21.1 (COM OUTROS CORRIGIDO)
 // ============================================================================
+
+function renderDocumentacaoDashboard(d) {
+    const { geral, vendasLoja, vendasWeb, consultores, mes, ano, temColunasPromo } = d;
+    
+    if (!consultores || consultores.length === 0) {
+        dashboardContent.innerHTML = `
+            <h2 class="dash-title"><i class="fas fa-folder" style="color:var(--primary)"></i> Dashboard de Vendas — ${mes} ${ano}</h2>
+            <div class="error-message">
+                <i class="fas fa-info-circle" style="font-size:2rem;color:var(--warning)"></i>
+                <h3>Nenhum dado encontrado</h3>
+                <p>Não há registros de vendas para o período selecionado.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const pG = calcPercentDoc(geral.aprovados, geral.total, geral.cancelados||0);
+    const pL = calcPercentDoc(vendasLoja.aprovados, vendasLoja.total, vendasLoja.cancelados||0);
+    const pW = calcPercentDoc(vendasWeb.aprovados, vendasWeb.total, vendasWeb.cancelados||0);
+
+    const bySector = groupBySector(consultores);
+    
+    // ⭐ GARANTE QUE OUTROS EXISTE
+    if (!bySector['OUTROS']) {
+        bySector['OUTROS'] = [];
+    }
+    
+    const sectors = sortSectors(Object.keys(bySector), ['VENDAS','RECEPCAO','REFILIACAO','WEB SITE','TELEVENDAS','OUTROS']);
+
+    dashboardContent.innerHTML = `
+    <h2 class="dash-title"><i class="fas fa-folder" style="color:var(--primary)"></i> Dashboard de Vendas — ${mes} ${ano}</h2>
+    <div class="main-cards">
+        ${cardDoc('Total de Vendas', 'fas fa-chart-bar', geral, pG)}
+        ${cardDoc('Vendas Loja',     'fas fa-store',     vendasLoja, pL)}
+        ${cardDoc('Vendas Web/Tele', 'fas fa-globe',     vendasWeb,  pW)}
+    </div>
+    ${promoSection(d, temColunasPromo)}
+    <h3 class="section-title"><i class="fas fa-layer-group" style="color:var(--primary)"></i> Desempenho por Setor</h3>
+    ${sectors.map(sector => {
+        const list = bySector[sector] || [];
+        if (list.length === 0) {
+            return `
+            <div class="sector-card" style="border-top-color:var(--gray)">
+                <div class="sector-header">
+                    <div class="sector-title">
+                        <i class="${getSectorIcon(sector)}"></i> ${sector}
+                        <span class="sector-count">0 consultores</span>
+                    </div>
+                    <div class="metric-percent percent-low">0% aprovados</div>
+                </div>
+                <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:0.85rem">
+                    <i class="fas fa-info-circle"></i> Nenhum dado neste setor
+                </div>
+            </div>`;
+        }
+        
+        const tot   = list.reduce((s,c) => s + (c.total || 0), 0);
+        const canc  = list.reduce((s,c) => s + (c.cancelados || 0), 0);
+        const aprov = list.reduce((s,c) => s + (c.aprovados || 0), 0);
+        const pct   = calcPercentDoc(aprov, tot, canc);
+        
+        return `
+        <div class="sector-card">
+            <div class="sector-header">
+                <div class="sector-title">
+                    <i class="${getSectorIcon(sector)}"></i> ${sector}
+                    <span class="sector-count">${list.length} consultor${list.length!==1?'es':''}</span>
+                </div>
+                <div class="metric-percent ${getPercentClass(pct)}">${pct}% aprovados</div>
+            </div>
+            <div class="consultant-grid">
+                ${list.sort((a,b) => (b.total || 0) - (a.total || 0)).map(c => {
+                    const p = calcPercentDoc(c.aprovados, c.total, c.cancelados||0);
+                    return `
+                    <div class="consultant-card">
+                        <div class="consultant-header">
+                            <div class="consultant-name">${c.nome || 'Sem nome'}</div>
+                            <div class="consultant-sector ${getSectorClass(sector)}">${sector}</div>
+                        </div>
+                        <div class="metric-grid">
+                            ${metricItem('Total',        c.total || 0)}
+                            ${metricItem('Cancelados',   c.cancelados || 0, '#991b1b')}
+                            ${metricItem('Base líquida', (c.total || 0) - (c.cancelados || 0))}
+                            ${metricItem('Aprovados',    c.aprovados || 0, 'var(--success)')}
+                            ${metricItem('Pendências',   c.pendencias || 0, 'var(--danger)')}
+                            ${metricItem('Não Enviado',  c.naoEnviado || 0, 'var(--warning)')}
+                            ${metricItem('Expirado',     c.expirado || 0, 'var(--gray)')}
+                            ${metricPercent('% Aprovados', p)}
+                        </div>
+                        ${temColunasPromo ? promoMiniCards(c) : ''}
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`;
+    }).join('')}`;
+}
 
 // % sobre base líquida (sem cancelados)
 function calcPercentDoc(aprovados, total, cancelados) {
@@ -603,68 +685,6 @@ function promoSection(d, temPromo) {
         ${miniCard('Promoção — Loja',   lp, pLP, 'var(--primary-dark)')}
         ${miniCard('Normal — Loja',     ln, pLN, 'var(--accent-dark)')}
     </div>`;
-}
-
-function renderDocumentacaoDashboard(d) {
-    const { geral, vendasLoja, vendasWeb, consultores, mes, ano, temColunasPromo } = d;
-
-    // % sobre base líquida
-    const pG = calcPercentDoc(geral.aprovados,      geral.total,      geral.cancelados||0);
-    const pL = calcPercentDoc(vendasLoja.aprovados,  vendasLoja.total, vendasLoja.cancelados||0);
-    const pW = calcPercentDoc(vendasWeb.aprovados,   vendasWeb.total,  vendasWeb.cancelados||0);
-
-    const bySector = groupBySector(consultores);
-    const sectors  = sortSectors(Object.keys(bySector), ['VENDAS','RECEPCAO','REFILIACAO','WEB SITE','TELEVENDAS','OUTROS']);
-
-    dashboardContent.innerHTML = `
-    <h2 class="dash-title"><i class="fas fa-folder" style="color:var(--primary)"></i> Dashboard de Vendas — ${mes} ${ano}</h2>
-    <div class="main-cards">
-        ${cardDoc('Total de Vendas', 'fas fa-chart-bar', geral,      pG)}
-        ${cardDoc('Vendas Loja',     'fas fa-store',     vendasLoja, pL)}
-        ${cardDoc('Vendas Web/Tele', 'fas fa-globe',     vendasWeb,  pW)}
-    </div>
-    ${promoSection(d, temColunasPromo)}
-    <h3 class="section-title"><i class="fas fa-layer-group" style="color:var(--primary)"></i> Desempenho por Setor</h3>
-    ${sectors.map(sector => {
-        const list = bySector[sector];
-        const tot   = list.reduce((s,c) => s + c.total, 0);
-        const canc  = list.reduce((s,c) => s + (c.cancelados||0), 0);
-        const aprov = list.reduce((s,c) => s + c.aprovados, 0);
-        const pct   = calcPercentDoc(aprov, tot, canc);
-        return `
-        <div class="sector-card">
-            <div class="sector-header">
-                <div class="sector-title">
-                    <i class="${getSectorIcon(sector)}"></i> ${sector}
-                    <span class="sector-count">${list.length} consultor${list.length!==1?'es':''}</span>
-                </div>
-                <div class="metric-percent ${getPercentClass(pct)}">${pct}% aprovados</div>
-            </div>
-            <div class="consultant-grid">
-                ${list.sort((a,b) => b.total - a.total).map(c => {
-                    const p = calcPercentDoc(c.aprovados, c.total, c.cancelados||0);
-                    return `
-                    <div class="consultant-card">
-                        <div class="consultant-header">
-                            <div class="consultant-name">${c.nome}</div>
-                            <div class="consultant-sector ${getSectorClass(sector)}">${sector}</div>
-                        </div>
-                        <div class="metric-grid">
-                            ${metricItem('Total',        c.total)}
-                            ${metricItem('Cancelados',   c.cancelados||0, '#991b1b')}
-                            ${metricItem('Base líquida', c.total-(c.cancelados||0))}
-                            ${metricItem('Aprovados',    c.aprovados,     'var(--success)')}
-                            ${metricItem('Pendências',   c.pendencias,    'var(--danger)')}
-                            ${metricItem('Não Enviado',  c.naoEnviado,    'var(--warning)')}
-                            ${metricItem('Expirado',     c.expirado,      'var(--gray)')}
-                            ${metricPercent('% Aprovados', p)}
-                        </div>
-                        ${temColunasPromo ? promoMiniCards(c) : ''}
-                    </div>`;
-                }).join('')}
-            </div>
-        </div>`;
-    }).join('')}`;
 }
 
 function cardDoc(t, icon, d, pct) {
@@ -770,8 +790,45 @@ function metricItem(l,v,c){ const s=c?`style="color:${c};"`:''; return `<div cla
 function metricPercent(l,v){ const cls=getPercentClass(typeof v==='number'?v:parseInt(v)); return `<div class="metric-item"><div class="metric-label">${l}</div><div class="metric-percent ${cls}">${v}%</div></div>`; }
 function metricItemWhite(l,v){ return `<div class="metric-item"><div class="metric-label" style="color:rgba(255,255,255,0.75)">${l}</div><div class="metric-value" style="color:white">${v}</div></div>`; }
 function calcPercent(n,d){ if(!d||d===0)return 0; return Math.round((n/d)*100); }
-function groupBySector(list){ const m={}; list.forEach(c=>{const s=c.setor||'OUTROS';if(!m[s])m[s]=[];m[s].push(c);}); return m; }
-function sortSectors(keys,order){ return keys.sort((a,b)=>{const ia=order.indexOf(a),ib=order.indexOf(b);if(ia===-1&&ib===-1)return a.localeCompare(b);if(ia===-1)return 1;if(ib===-1)return -1;return ia-ib;}); }
+
+// ============================================================================
+// GROUP BY SECTOR - CORRIGIDO (GARANTE OUTROS)
+// ============================================================================
+
+function groupBySector(list) {
+    const m = {};
+    if (!list || list.length === 0) return m;
+    
+    list.forEach(c => {
+        const s = (c.setor || 'OUTROS').toUpperCase();
+        if (!m[s]) m[s] = [];
+        m[s].push(c);
+    });
+    
+    // ⭐⭐ GARANTE QUE OUTROS EXISTE
+    if (!m['OUTROS']) m['OUTROS'] = [];
+    
+    return m;
+}
+
+// ============================================================================
+// SORT SECTORS - CORRIGIDO
+// ============================================================================
+
+function sortSectors(keys, order) {
+    const uniqueKeys = [...new Set(keys)];
+    const orderWithOutros = order.includes('OUTROS') ? order : [...order, 'OUTROS'];
+    
+    return uniqueKeys.sort((a, b) => {
+        const ia = orderWithOutros.indexOf(a);
+        const ib = orderWithOutros.indexOf(b);
+        if (ia === -1 && ib === -1) return a.localeCompare(b);
+        if (ia === -1) return 1;
+        if (ib === -1) return -1;
+        return ia - ib;
+    });
+}
+
 function getPercentClass(p){ p=typeof p==='number'?p:parseInt(p)||0; if(p>=90)return 'percent-high'; if(p>=80)return 'percent-medium'; return 'percent-low'; }
 function getSectorClass(s){ switch((s||'').toUpperCase()){case 'VENDAS':return 'sector-vendas';case 'RECEPCAO':return 'sector-recepcao';case 'REFILIACAO':return 'sector-refiliacao';case 'WEB SITE':case 'WEB':return 'sector-web';case 'TELEVENDAS':return 'sector-televendas';case 'RETENÇÃO':case 'RETENCAO':return 'sector-retencao';default:return 'sector-outros';} }
 function getSectorIcon(s){ switch((s||'').toUpperCase()){case 'VENDAS':return 'fas fa-shopping-cart';case 'RECEPCAO':return 'fas fa-headset';case 'REFILIACAO':return 'fas fa-user-plus';case 'WEB SITE':case 'WEB':return 'fas fa-globe';case 'TELEVENDAS':return 'fas fa-phone-alt';case 'RETENÇÃO':case 'RETENCAO':return 'fas fa-crown';default:return 'fas fa-users';} }
@@ -782,7 +839,7 @@ function legendTop(){ return {position:'top',labels:{boxWidth:12,padding:14}}; }
 function showSkeleton(){
     if(loadingEl) loadingEl.style.display='none';
     let sk = document.getElementById('skeletonLoader');
-    if(sk) return; // já existe
+    if(sk) return;
     sk = document.createElement('div');
     sk.id = 'skeletonLoader';
     sk.style.cssText = 'position:absolute;inset:0;background:rgba(240,247,242,0.85);z-index:10;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;backdrop-filter:blur(2px);border-radius:inherit';
@@ -801,7 +858,6 @@ function showSkeleton(){
             </div>
             <div class="sk-line" style="height:60px;border-radius:12px"></div>
         </div>`;
-    // posiciona relativo ao dashboardContent
     dashboardContent.style.position = 'relative';
     dashboardContent.appendChild(sk);
 }
@@ -814,7 +870,6 @@ function hideSkeleton(){
     if(pl) pl.remove();
 }
 
-// Mantida por compatibilidade com código existente
 function showProgressLoading(label='Carregando...', pct=0){ showSkeleton(); }
 function updateProgress(pct, label){
     const msg = document.getElementById('skeletonMsg');
@@ -829,7 +884,6 @@ function showToast(msg){
     setTimeout(()=>{ t.className='toast'; },2500);
 }
 
-// ── showError melhorado — pode tentar novamente ou voltar ao resumo ────────
 function showError(msg, podeRetentar=true){
     hideSkeleton();
     const online = navigator.onLine;
@@ -861,14 +915,12 @@ function showError(msg, podeRetentar=true){
 
 // ── Modal de período para mobile ───────────────────────────────────────────
 function initPeriodModal(){
-    // Botão flutuante que aparece só no mobile
     const fab = document.createElement('button');
     fab.id = 'periodFab';
     fab.innerHTML = '<i class="fas fa-calendar-alt"></i>';
     fab.title = 'Selecionar período';
     document.body.appendChild(fab);
 
-    // Modal
     const modal = document.createElement('div');
     modal.id = 'periodModal';
     modal.innerHTML = `
@@ -902,7 +954,6 @@ function initPeriodModal(){
         </div>`;
     document.body.appendChild(modal);
 
-    // Popular anos no mobile
     const anoAtual = new Date().getFullYear();
     const yearMob = document.getElementById('yearSelectMobile');
     for(let y = anoAtual; y >= anoAtual - 3; y--){
@@ -936,20 +987,17 @@ function initPeriodModal(){
         const ym = document.getElementById('yearSelectMobile');
         currentMonth = parseInt(mm.value);
         currentYear  = parseInt(ym.value);
-        // Sincroniza com os selects da topbar
         if(monthSelect) monthSelect.value = currentMonth;
         if(yearSelect)  yearSelect.value  = currentYear;
         closeModal();
         loadDashboard();
     });
 
-    // Esconde FAB em dashboards sem período
     function updateFabVisibility(){
         fab.style.display = SEM_FILTRO.includes(currentDashboard) ? 'none' : 'flex';
     }
     updateFabVisibility();
 
-    // Expõe para que o clique do sidebar possa atualizar a visibilidade do FAB
     window.updateFabVisibility = updateFabVisibility;
 }
 
@@ -974,9 +1022,7 @@ async function exportPage(){
 function getMonthName(m){ return ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][m-1]; }
 
 // ============================================================================
-// DASHBOARD: CAMPANHA 14° SALÁRIO — ADICIONADO
-// Layout compacto: meses maiores, oculta colaboradores sem nenhum destaque,
-// botão para revelar ocultos por setor.
+// DASHBOARD: CAMPANHA 14° SALÁRIO
 // ============================================================================
 
 function renderCampanha14Dashboard(d) {
@@ -1034,7 +1080,6 @@ function renderCampanha14Dashboard(d) {
             </div>`;
     }
 
-    // ID único por setor para o botão de toggle
     let setorIdx = 0;
     const setorCards = Object.entries(porSetor).map(([setor, lista]) => {
         const classif   = lista.filter(c => c.status==='classificado').length;
@@ -1092,4 +1137,34 @@ function renderCampanha14Dashboard(d) {
             ${metricItem('No prazo', resumo.noPrazo, 'var(--warning)')}
         </div>
         ${setorCards}`;
+}
+
+// ============================================================================
+// FUNÇÃO DE DIAGNÓSTICO - PARA USAR NO CONSOLE
+// ============================================================================
+
+function diagnosticarDadosRecebidos() {
+    console.log('📊 DADOS RECEBIDOS:');
+    console.log('Dashboard atual:', currentDashboard);
+    console.log('Dados:', window._dashboardData);
+    
+    if (window._dashboardData && window._dashboardData.consultores) {
+        const consultores = window._dashboardData.consultores;
+        console.log('Total consultores:', consultores.length);
+        
+        const setores = {};
+        consultores.forEach(c => {
+            const s = c.setor || 'OUTROS';
+            if (!setores[s]) setores[s] = [];
+            setores[s].push(c.nome);
+        });
+        
+        console.log('Setores encontrados:');
+        Object.keys(setores).sort().forEach(s => {
+            console.log(`  ${s}: ${setores[s].length} consultores`);
+            console.log(`    ${setores[s].slice(0, 5).join(', ')}`);
+        });
+    } else {
+        console.log('⚠️ Nenhum dado disponível');
+    }
 }
