@@ -147,9 +147,22 @@ function rowToData(endpoint, row) {
         };
     }
     if (endpoint === 'refuturiza') {
+        // 🔧 CORREÇÃO: Adiciona base líquida e percentual corrigido
+        const total = row.geral_total || 0;
+        const cancelado = row.geral_cancelado || 0;
+        const baseLiquida = total - cancelado;
+        const percentualCorrigido = baseLiquida > 0 ? Math.round(((row.geral_com_ligacao || 0) / baseLiquida) * 100) : 0;
+        
         return {
             mes: row.mes_nome, ano: row.ano,
-            geral: { total: row.geral_total, comLigacao: row.geral_com_ligacao, semLigacao: row.geral_sem_ligacao, cancelado: row.geral_cancelado },
+            geral: { 
+                total: total, 
+                comLigacao: row.geral_com_ligacao || 0, 
+                semLigacao: row.geral_sem_ligacao || 0, 
+                cancelado: cancelado,
+                baseLiquida: baseLiquida,
+                percentualComLigacao: percentualCorrigido
+            },
             consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : row.consultores
         };
     }
@@ -771,16 +784,89 @@ function renderRecorrenciaVendedorDashboard(d){
 }
 
 // ============================================================================
-// DASHBOARD: REFUTURIZA
+// DASHBOARD: REFUTURIZA — CORRIGIDO (CANCELADOS SUBTRAÍDOS DO TOTAL)
 // ============================================================================
-function renderRefuturizaDashboard(d){
-    const {geral,consultores,mes,ano}=d;
-    if(!geral||!consultores){showError('Dados do Refuturiza não encontrados');return;}
-    const pG=calcPercent(geral.comLigacao,geral.total);
-    dashboardContent.innerHTML=`
+
+function renderRefuturizaDashboard(d) {
+    const { geral, consultores, mes, ano } = d;
+    if (!geral || !consultores) {
+        showError('Dados do Refuturiza não encontrados');
+        return;
+    }
+
+    // 🔧 CORREÇÃO: Base líquida = total - cancelados
+    const totalBruto = geral.total || 0;
+    const cancelados = geral.cancelado || 0;
+    const baseLiquida = totalBruto - cancelados;
+    const pG = baseLiquida > 0 ? Math.round((geral.comLigacao / baseLiquida) * 100) : 0;
+
+    dashboardContent.innerHTML = `
     <h2 class="dash-title"><i class="fas fa-book" style="color:var(--accent-dark)"></i> Dashboard Refuturiza — ${mes} ${ano}</h2>
-    <div class="card card-refut" style="max-width:500px;margin:0 auto 28px"><div class="card-header"><div class="card-title">Refuturiza — Total da Loja</div><div class="card-icon"><i class="fas fa-book-open"></i></div></div><div class="metric-grid">${metricItem('Total',geral.total||0)}${metricItem('Com Ligação',geral.comLigacao||0,'var(--success)')}${metricItem('Sem Ligação',geral.semLigacao||0,'var(--danger)')}${metricItem('Cancelados',geral.cancelado||0,'var(--gray)')}${metricPercent('% Com Ligação',pG)}</div></div>
-    ${consultores.length>0?`<h3 class="section-title"><i class="fas fa-users" style="color:var(--accent-dark)"></i> Desempenho por Consultor (${consultores.length})</h3><div class="consultant-grid">${consultores.map(c=>{const p=calcPercent(c.comLigacao||0,c.total);return `<div class="consultant-card"><div class="consultant-header"><div class="consultant-name">${c.nome}</div><div class="consultant-sector" style="background:var(--primary-light);color:var(--accent-dark)">REFUTURIZA</div></div><div class="metric-grid">${metricItem('Total',c.total||0)}${metricItem('Com Ligação',c.comLigacao||0,'var(--success)')}${metricItem('Sem Ligação',c.semLigacao||0,'var(--danger)')}${metricItem('Cancelados',c.cancelado||0,'var(--gray)')}${metricPercent('% Com Ligação',p)}</div></div>`;}).join('')}</div><div class="card" style="margin-top:36px;background:linear-gradient(135deg,var(--primary),#007a3d);color:white"><div class="card-header" style="border-bottom-color:rgba(255,255,255,0.2)"><div class="card-title" style="color:white">Resumo Final</div><div class="card-icon" style="background:rgba(255,255,255,0.2)"><i class="fas fa-graduation-cap"></i></div></div><div class="metric-grid">${metricItemWhite('Total Consultores',consultores.length)}${metricItemWhite('Total Cursos',geral.total||0)}${metricItemWhite('Média por Consultor',consultores.length>0?Math.round((geral.total||0)/consultores.length):0)}${metricItemWhite('Taxa de Contato',pG+'%')}</div></div>`:`<div style="text-align:center;padding:40px;color:var(--gray)"><i class="fas fa-info-circle" style="font-size:2.5rem;margin-bottom:16px;display:block;"></i><h3>Nenhum dado para ${mes} ${ano}</h3></div>`}`;
+    
+    <!-- 🔧 CARD PRINCIPAL CORRIGIDO -->
+    <div class="card card-refut" style="max-width:500px;margin:0 auto 28px">
+        <div class="card-header">
+            <div class="card-title">Refuturiza — Total da Loja</div>
+            <div class="card-icon"><i class="fas fa-book-open"></i></div>
+        </div>
+        <div class="metric-grid">
+            ${metricItem('TOTAL BRUTO', totalBruto)}
+            ${metricItem('CANCELADOS', cancelados, '#991b1b')}
+            ${metricItem('BASE LÍQUIDA', baseLiquida, 'var(--primary)')}
+            ${metricItem('COM LIGAÇÃO', geral.comLigacao || 0, 'var(--success)')}
+            ${metricItem('SEM LIGAÇÃO', geral.semLigacao || 0, 'var(--danger)')}
+            ${metricPercent('% COM LIGAÇÃO (s/ cancelados)', pG)}
+        </div>
+    </div>
+
+    ${consultores.length > 0 ? `
+    <h3 class="section-title"><i class="fas fa-users" style="color:var(--accent-dark)"></i> Desempenho por Consultor (${consultores.length})</h3>
+    <div class="consultant-grid">
+        ${consultores.map(c => {
+            // 🔧 CORREÇÃO: Base líquida por consultor
+            const cTotal = c.total || 0;
+            const cCancel = c.cancelado || 0;
+            const cBase = cTotal - cCancel;
+            const p = cBase > 0 ? Math.round(((c.comLigacao || 0) / cBase) * 100) : 0;
+            
+            return `
+            <div class="consultant-card">
+                <div class="consultant-header">
+                    <div class="consultant-name">${c.nome}</div>
+                    <div class="consultant-sector" style="background:var(--primary-light);color:var(--accent-dark)">REFUTURIZA</div>
+                </div>
+                <div class="metric-grid">
+                    ${metricItem('TOTAL BRUTO', cTotal)}
+                    ${metricItem('CANCELADOS', cCancel, '#991b1b')}
+                    ${metricItem('BASE LÍQUIDA', cBase, 'var(--primary)')}
+                    ${metricItem('COM LIGAÇÃO', c.comLigacao || 0, 'var(--success)')}
+                    ${metricItem('SEM LIGAÇÃO', c.semLigacao || 0, 'var(--danger)')}
+                    ${metricPercent('% COM LIGAÇÃO', p)}
+                </div>
+            </div>`;
+        }).join('')}
+    </div>
+
+    <!-- 🔧 RESUMO FINAL CORRIGIDO -->
+    <div class="card" style="margin-top:36px;background:linear-gradient(135deg,var(--primary),#007a3d);color:white">
+        <div class="card-header" style="border-bottom-color:rgba(255,255,255,0.2)">
+            <div class="card-title" style="color:white">📊 Resumo Final</div>
+            <div class="card-icon" style="background:rgba(255,255,255,0.2)"><i class="fas fa-graduation-cap"></i></div>
+        </div>
+        <div class="metric-grid">
+            ${metricItemWhite('Total Consultores', consultores.length)}
+            ${metricItemWhite('Total Bruto', totalBruto)}
+            ${metricItemWhite('Total Cancelados', cancelados)}
+            ${metricItemWhite('Base Líquida', baseLiquida)}
+            ${metricItemWhite('Média por Consultor', consultores.length > 0 ? Math.round(baseLiquida / consultores.length) : 0)}
+            ${metricItemWhite('Taxa de Contato (s/ cancelados)', pG + '%')}
+        </div>
+    </div>
+    ` : `
+    <div style="text-align:center;padding:40px;color:var(--gray)">
+        <i class="fas fa-info-circle" style="font-size:2.5rem;margin-bottom:16px;display:block;"></i>
+        <h3>Nenhum dado para ${mes} ${ano}</h3>
+    </div>`}`;
 }
 
 // ============================================================================
