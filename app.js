@@ -147,14 +147,26 @@ function rowToData(endpoint, row) {
         };
     }
     if (endpoint === 'refuturiza') {
-        // 🔧 CORREÇÃO: Adiciona base líquida e percentual corrigido
+        // 🔧 CORREÇÃO: Garante que cada consultor tenha os campos corretos
+        let consultores = typeof row.consultores === 'string' ? JSON.parse(row.consultores) : (row.consultores || []);
+        
+        // 🔧 Normaliza os dados de cada consultor
+        consultores = consultores.map(c => ({
+            nome: c.nome || 'Desconhecido',
+            total: c.total || c.totalVendas || 0,
+            cancelado: c.cancelado || c.cancelados || 0,
+            comLigacao: c.comLigacao || c.comLigacao || 0,
+            semLigacao: c.semLigacao || c.semLigacao || 0
+        }));
+
         const total = row.geral_total || 0;
         const cancelado = row.geral_cancelado || 0;
         const baseLiquida = total - cancelado;
         const percentualCorrigido = baseLiquida > 0 ? Math.round(((row.geral_com_ligacao || 0) / baseLiquida) * 100) : 0;
         
         return {
-            mes: row.mes_nome, ano: row.ano,
+            mes: row.mes_nome, 
+            ano: row.ano,
             geral: { 
                 total: total, 
                 comLigacao: row.geral_com_ligacao || 0, 
@@ -163,7 +175,7 @@ function rowToData(endpoint, row) {
                 baseLiquida: baseLiquida,
                 percentualComLigacao: percentualCorrigido
             },
-            consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : row.consultores
+            consultores: consultores
         };
     }
     return null;
@@ -789,16 +801,30 @@ function renderRecorrenciaVendedorDashboard(d){
 
 function renderRefuturizaDashboard(d) {
     const { geral, consultores, mes, ano } = d;
-    if (!geral || !consultores) {
+    
+    if (!geral) {
         showError('Dados do Refuturiza não encontrados');
         return;
     }
 
+    // 🔧 Garante que consultores seja um array
+    const consultoresList = consultores || [];
+    
     // 🔧 CORREÇÃO: Base líquida = total - cancelados
     const totalBruto = geral.total || 0;
     const cancelados = geral.cancelado || 0;
     const baseLiquida = totalBruto - cancelados;
     const pG = baseLiquida > 0 ? Math.round((geral.comLigacao / baseLiquida) * 100) : 0;
+
+    // 🔧 Filtra apenas consultores com vendas (total > 0)
+    const consultoresComVendas = consultoresList.filter(c => (c.total || 0) > 0);
+    
+    // 🔧 Ordena por base líquida (total - cancelado) decrescente
+    const consultoresOrdenados = [...consultoresComVendas].sort((a, b) => {
+        const baseA = (a.total || 0) - (a.cancelado || 0);
+        const baseB = (b.total || 0) - (b.cancelado || 0);
+        return baseB - baseA;
+    });
 
     dashboardContent.innerHTML = `
     <h2 class="dash-title"><i class="fas fa-book" style="color:var(--accent-dark)"></i> Dashboard Refuturiza — ${mes} ${ano}</h2>
@@ -819,10 +845,10 @@ function renderRefuturizaDashboard(d) {
         </div>
     </div>
 
-    ${consultores.length > 0 ? `
-    <h3 class="section-title"><i class="fas fa-users" style="color:var(--accent-dark)"></i> Desempenho por Consultor (${consultores.length})</h3>
+    ${consultoresOrdenados.length > 0 ? `
+    <h3 class="section-title"><i class="fas fa-users" style="color:var(--accent-dark)"></i> Desempenho por Consultor (${consultoresOrdenados.length})</h3>
     <div class="consultant-grid">
-        ${consultores.map(c => {
+        ${consultoresOrdenados.map(c => {
             // 🔧 CORREÇÃO: Base líquida por consultor
             const cTotal = c.total || 0;
             const cCancel = c.cancelado || 0;
@@ -854,18 +880,19 @@ function renderRefuturizaDashboard(d) {
             <div class="card-icon" style="background:rgba(255,255,255,0.2)"><i class="fas fa-graduation-cap"></i></div>
         </div>
         <div class="metric-grid">
-            ${metricItemWhite('Total Consultores', consultores.length)}
+            ${metricItemWhite('Total Consultores c/ vendas', consultoresOrdenados.length)}
             ${metricItemWhite('Total Bruto', totalBruto)}
             ${metricItemWhite('Total Cancelados', cancelados)}
             ${metricItemWhite('Base Líquida', baseLiquida)}
-            ${metricItemWhite('Média por Consultor', consultores.length > 0 ? Math.round(baseLiquida / consultores.length) : 0)}
+            ${metricItemWhite('Média por Consultor', consultoresOrdenados.length > 0 ? Math.round(baseLiquida / consultoresOrdenados.length) : 0)}
             ${metricItemWhite('Taxa de Contato (s/ cancelados)', pG + '%')}
         </div>
     </div>
     ` : `
     <div style="text-align:center;padding:40px;color:var(--gray)">
         <i class="fas fa-info-circle" style="font-size:2.5rem;margin-bottom:16px;display:block;"></i>
-        <h3>Nenhum dado para ${mes} ${ano}</h3>
+        <h3>Nenhum consultor com vendas para ${mes} ${ano}</h3>
+        <p style="font-size:0.9rem;margin-top:8px;">Total bruto: ${totalBruto} | Cancelados: ${cancelados}</p>
     </div>`}`;
 }
 
