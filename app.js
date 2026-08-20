@@ -1,5 +1,5 @@
 // ============================================================================
-// DASHBOARD V21.1 - app.js — COM SUPABASE
+// DASHBOARD V21.1 - app.js — COM SUPABASE (CORRIGIDO REFUTURIZA)
 // ============================================================================
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbx6rfIIr2kyzE2ptVkp7TtbM0jLFwdDH4Jig4L_HIKBfW3s6duXqhgNB7VIiQOsYks/exec';
@@ -84,6 +84,7 @@ async function fetchSupabase(endpoint, mes, ano) {
 
 function rowToData(endpoint, row) {
     if (!row) return null;
+    
     if (endpoint === 'documentacao') {
         const parseJ = v => typeof v === 'string' ? JSON.parse(v) : (v || {total:0,cancelados:0,aprovados:0,reprovados:0,expirado:0,pendente:0,naoEnviado:0});
         return {
@@ -116,6 +117,7 @@ function rowToData(endpoint, row) {
             consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : row.consultores
         };
     }
+    
     if (endpoint === 'app') {
         return {
             mes: row.mes_nome, ano: row.ano,
@@ -126,6 +128,7 @@ function rowToData(endpoint, row) {
             consultorasRetencao: typeof row.consultoras_retencao === 'string' ? JSON.parse(row.consultoras_retencao) : (row.consultoras_retencao || [])
         };
     }
+    
     if (endpoint === 'adimplencia') {
         return {
             mes: row.mes_nome, ano: row.ano,
@@ -133,9 +136,11 @@ function rowToData(endpoint, row) {
             consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : row.consultores
         };
     }
+    
     if (endpoint === 'recorrencia') {
         return typeof row.dados === 'string' ? JSON.parse(row.dados) : row.dados;
     }
+    
     if (endpoint === 'recorrencia_vendedor') {
         return {
             mes: 'TODOS OS MESES', ano: 'TODOS OS ANOS',
@@ -146,44 +151,90 @@ function rowToData(endpoint, row) {
             totalRegistros: row.total_registros
         };
     }
+    
     if (endpoint === 'refuturiza') {
-        // 🔧 CORREÇÃO: Garante que cada consultor tenha os campos corretos
-        let consultores = typeof row.consultores === 'string' ? JSON.parse(row.consultores) : (row.consultores || []);
+        // 🔧 CORREÇÃO COMPLETA: Garante que os dados dos consultores sejam carregados corretamente
+        let consultores = [];
         
-        // 🔧 Normaliza os dados de cada consultor
-        consultores = consultores.map(c => ({
+        // Tenta parsear os consultores do Supabase
+        try {
+            if (typeof row.consultores === 'string') {
+                consultores = JSON.parse(row.consultores);
+            } else if (Array.isArray(row.consultores)) {
+                consultores = row.consultores;
+            } else if (row.consultores && typeof row.consultores === 'object') {
+                // Se for um objeto, tenta converter para array
+                consultores = Object.values(row.consultores);
+            }
+        } catch(e) {
+            console.warn('Erro ao parsear consultores:', e);
+            consultores = [];
+        }
+        
+        // 🔧 Normaliza cada consultor com valores padrão
+        const consultoresNormalizados = consultores.map(c => ({
             nome: c.nome || 'Desconhecido',
-            total: c.total || c.totalVendas || 0,
-            cancelado: c.cancelado || c.cancelados || 0,
-            comLigacao: c.comLigacao || c.comLigacao || 0,
-            semLigacao: c.semLigacao || c.semLigacao || 0
+            total: Number(c.total) || Number(c.totalVendas) || 0,
+            cancelado: Number(c.cancelado) || Number(c.cancelados) || 0,
+            comLigacao: Number(c.comLigacao) || Number(c.com_ligacao) || 0,
+            semLigacao: Number(c.semLigacao) || Number(c.sem_ligacao) || 0
         }));
 
-        const total = row.geral_total || 0;
-        const cancelado = row.geral_cancelado || 0;
-        const baseLiquida = total - cancelado;
-        const percentualCorrigido = baseLiquida > 0 ? Math.round(((row.geral_com_ligacao || 0) / baseLiquida) * 100) : 0;
+        // 🔧 Remove duplicatas pelo nome (mantém o que tem mais vendas)
+        const consultoresUnicos = {};
+        consultoresNormalizados.forEach(c => {
+            const key = c.nome.toUpperCase();
+            if (!consultoresUnicos[key] || c.total > consultoresUnicos[key].total) {
+                consultoresUnicos[key] = c;
+            }
+        });
+
+        const consultoresFinal = Object.values(consultoresUnicos);
+        
+        // 🔧 Dados gerais
+        const totalBruto = Number(row.geral_total) || 0;
+        const cancelado = Number(row.geral_cancelado) || 0;
+        const comLigacao = Number(row.geral_com_ligacao) || 0;
+        const semLigacao = Number(row.geral_sem_ligacao) || 0;
+        const baseLiquida = totalBruto - cancelado;
+        const percentualCorrigido = baseLiquida > 0 ? Math.round((comLigacao / baseLiquida) * 100) : 0;
+        
+        // 🔧 Se não tiver consultores, mas tiver total bruto > 0, tenta extrair do row
+        if (consultoresFinal.length === 0 && totalBruto > 0) {
+            // Tenta criar um consultor genérico com os dados totais
+            consultoresFinal.push({
+                nome: 'Total Geral',
+                total: totalBruto,
+                cancelado: cancelado,
+                comLigacao: comLigacao,
+                semLigacao: semLigacao
+            });
+        }
         
         return {
-            mes: row.mes_nome, 
-            ano: row.ano,
+            mes: row.mes_nome || 'Mês Desconhecido', 
+            ano: row.ano || 'Ano Desconhecido',
             geral: { 
-                total: total, 
-                comLigacao: row.geral_com_ligacao || 0, 
-                semLigacao: row.geral_sem_ligacao || 0, 
+                total: totalBruto, 
+                comLigacao: comLigacao, 
+                semLigacao: semLigacao, 
                 cancelado: cancelado,
                 baseLiquida: baseLiquida,
                 percentualComLigacao: percentualCorrigido
             },
-            consultores: consultores
+            consultores: consultoresFinal
         };
     }
+    
     return null;
 }
 
 async function fetchData(endpoint, mes, ano) {
     const dadosSupabase = await fetchSupabase(endpoint, mes, ano);
-    if (dadosSupabase) return { status: 'success', data: dadosSupabase, fonte: 'supabase' };
+    if (dadosSupabase) {
+        console.log(`✅ Dados do Supabase para ${endpoint}:`, dadosSupabase);
+        return { status: 'success', data: dadosSupabase, fonte: 'supabase' };
+    }
 
     const url = buildUrl(endpoint, mes, ano);
     try {
@@ -196,7 +247,10 @@ async function fetchData(endpoint, mes, ano) {
             };
         }
         const json = await resp.json();
-        if (json.status === 'success') json.fonte = 'appscript';
+        if (json.status === 'success') {
+            json.fonte = 'appscript';
+            console.log(`✅ Dados do Apps Script para ${endpoint}:`, json.data);
+        }
         return json;
     } catch (err) {
         const isOffline = !navigator.onLine || err instanceof TypeError;
@@ -796,38 +850,62 @@ function renderRecorrenciaVendedorDashboard(d){
 }
 
 // ============================================================================
-// DASHBOARD: REFUTURIZA — CORRIGIDO (CANCELADOS SUBTRAÍDOS DO TOTAL)
+// DASHBOARD: REFUTURIZA — CORRIGIDO COMPLETAMENTE
 // ============================================================================
 
 function renderRefuturizaDashboard(d) {
-    const { geral, consultores, mes, ano } = d;
+    // 🔧 Debug: Verifica o que chegou
+    console.log('📊 Dados recebidos para Refuturiza:', d);
     
-    if (!geral) {
+    if (!d || !d.geral) {
         showError('Dados do Refuturiza não encontrados');
         return;
     }
 
     // 🔧 Garante que consultores seja um array
-    const consultoresList = consultores || [];
+    let consultoresList = d.consultores || [];
+    if (!Array.isArray(consultoresList)) {
+        consultoresList = [];
+    }
+    
+    // 🔧 Log para debug
+    console.log(`📊 ${consultoresList.length} consultores encontrados`);
+    console.log('📊 Primeiro consultor:', consultoresList[0]);
     
     // 🔧 CORREÇÃO: Base líquida = total - cancelados
-    const totalBruto = geral.total || 0;
-    const cancelados = geral.cancelado || 0;
+    const totalBruto = Number(d.geral.total) || 0;
+    const cancelados = Number(d.geral.cancelado) || 0;
     const baseLiquida = totalBruto - cancelados;
-    const pG = baseLiquida > 0 ? Math.round((geral.comLigacao / baseLiquida) * 100) : 0;
+    const pG = baseLiquida > 0 ? Math.round((Number(d.geral.comLigacao) / baseLiquida) * 100) : 0;
 
     // 🔧 Filtra apenas consultores com vendas (total > 0)
-    const consultoresComVendas = consultoresList.filter(c => (c.total || 0) > 0);
+    const consultoresComVendas = consultoresList.filter(c => {
+        const total = Number(c.total) || 0;
+        return total > 0;
+    });
+    
+    // 🔧 Se não tiver consultores com vendas, mas tiver total bruto > 0, cria um registro agregado
+    let consultoresParaExibir = consultoresComVendas;
+    
+    if (consultoresComVendas.length === 0 && totalBruto > 0) {
+        consultoresParaExibir = [{
+            nome: '📊 Total Geral',
+            total: totalBruto,
+            cancelado: cancelados,
+            comLigacao: Number(d.geral.comLigacao) || 0,
+            semLigacao: Number(d.geral.semLigacao) || 0
+        }];
+    }
     
     // 🔧 Ordena por base líquida (total - cancelado) decrescente
-    const consultoresOrdenados = [...consultoresComVendas].sort((a, b) => {
-        const baseA = (a.total || 0) - (a.cancelado || 0);
-        const baseB = (b.total || 0) - (b.cancelado || 0);
+    const consultoresOrdenados = [...consultoresParaExibir].sort((a, b) => {
+        const baseA = (Number(a.total) || 0) - (Number(a.cancelado) || 0);
+        const baseB = (Number(b.total) || 0) - (Number(b.cancelado) || 0);
         return baseB - baseA;
     });
 
     dashboardContent.innerHTML = `
-    <h2 class="dash-title"><i class="fas fa-book" style="color:var(--accent-dark)"></i> Dashboard Refuturiza — ${mes} ${ano}</h2>
+    <h2 class="dash-title"><i class="fas fa-book" style="color:var(--accent-dark)"></i> Dashboard Refuturiza — ${d.mes || 'Mês'} ${d.ano || ''}</h2>
     
     <!-- 🔧 CARD PRINCIPAL CORRIGIDO -->
     <div class="card card-refut" style="max-width:500px;margin:0 auto 28px">
@@ -839,8 +917,8 @@ function renderRefuturizaDashboard(d) {
             ${metricItem('TOTAL BRUTO', totalBruto)}
             ${metricItem('CANCELADOS', cancelados, '#991b1b')}
             ${metricItem('BASE LÍQUIDA', baseLiquida, 'var(--primary)')}
-            ${metricItem('COM LIGAÇÃO', geral.comLigacao || 0, 'var(--success)')}
-            ${metricItem('SEM LIGAÇÃO', geral.semLigacao || 0, 'var(--danger)')}
+            ${metricItem('COM LIGAÇÃO', d.geral.comLigacao || 0, 'var(--success)')}
+            ${metricItem('SEM LIGAÇÃO', d.geral.semLigacao || 0, 'var(--danger)')}
             ${metricPercent('% COM LIGAÇÃO (s/ cancelados)', pG)}
         </div>
     </div>
@@ -850,15 +928,15 @@ function renderRefuturizaDashboard(d) {
     <div class="consultant-grid">
         ${consultoresOrdenados.map(c => {
             // 🔧 CORREÇÃO: Base líquida por consultor
-            const cTotal = c.total || 0;
-            const cCancel = c.cancelado || 0;
+            const cTotal = Number(c.total) || 0;
+            const cCancel = Number(c.cancelado) || 0;
             const cBase = cTotal - cCancel;
-            const p = cBase > 0 ? Math.round(((c.comLigacao || 0) / cBase) * 100) : 0;
+            const p = cBase > 0 ? Math.round(((Number(c.comLigacao) || 0) / cBase) * 100) : 0;
             
             return `
             <div class="consultant-card">
                 <div class="consultant-header">
-                    <div class="consultant-name">${c.nome}</div>
+                    <div class="consultant-name">${c.nome || 'Desconhecido'}</div>
                     <div class="consultant-sector" style="background:var(--primary-light);color:var(--accent-dark)">REFUTURIZA</div>
                 </div>
                 <div class="metric-grid">
@@ -891,7 +969,7 @@ function renderRefuturizaDashboard(d) {
     ` : `
     <div style="text-align:center;padding:40px;color:var(--gray)">
         <i class="fas fa-info-circle" style="font-size:2.5rem;margin-bottom:16px;display:block;"></i>
-        <h3>Nenhum consultor com vendas para ${mes} ${ano}</h3>
+        <h3>Nenhum consultor com vendas para ${d.mes || 'Mês'} ${d.ano || ''}</h3>
         <p style="font-size:0.9rem;margin-top:8px;">Total bruto: ${totalBruto} | Cancelados: ${cancelados}</p>
     </div>`}`;
 }
