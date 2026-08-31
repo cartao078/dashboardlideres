@@ -2,7 +2,7 @@
 // DASHBOARD V21.1 - app.js — COM SUPABASE (CORRIGIDO REFUTURIZA)
 // ============================================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbxR2C2gNhJjxagS3x18J-qNhIwJoPsxHyxhnQXNeL9sQMBkE4gfW8ZK1hpcLVpHI2E84Q/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxfXxDp0yVac4TlnRkGPBhCq2Vl1eqtVmOBkWR6O-R2C9KewRAqcfXswmKll9FmOOJbXg/exec';
 
 const SUPABASE_URL  = 'https://vycjtmjvkwvxunxtkdyi.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Y2p0bWp2a3d2eHVueHRrZHlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MDY2OTYsImV4cCI6MjA4NzE4MjY5Nn0.wOoAZpA1i-320E8Rc-Ry6nk0KYsedFXb3aS4gkmbjHU';
