@@ -379,7 +379,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
             // Controle de logo TIM
             if (currentDashboard === 'vendas_tim') {
-                if (logoPadrao) logoPadrao.style.display = 'none';
+                if (logoPadrao) logoPadrao.style.display = 'block';
                 if (logoTim) logoTim.style.display = 'block';
             } else {
                 if (logoPadrao) logoPadrao.style.display = 'block';
@@ -394,7 +394,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
     // Logo inicial
     if (currentDashboard === 'vendas_tim') {
-        if (logoPadrao) logoPadrao.style.display = 'none';
+        if (logoPadrao) logoPadrao.style.display = 'block';
         if (logoTim) logoTim.style.display = 'block';
     }
 
