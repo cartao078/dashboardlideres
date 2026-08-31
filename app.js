@@ -15,7 +15,7 @@ const C = {
 };
 
 const RANKING_SETORES = ['VENDAS','RECEPCAO','REFILIACAO'];
-const SEM_FILTRO      = ['recorrencia','recorrencia_vendedor','campanha14','vendas_tim'];
+const SEM_FILTRO      = ['recorrencia','recorrencia_vendedor','campanha14'];
 
 // ── Cache ──────────────────────────────────────────────────────────────────
 const CACHE_MEM  = new Map();
