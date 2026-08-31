@@ -2,7 +2,7 @@
 // DASHBOARD V21.1 - app.js — COM SUPABASE (CORRIGIDO REFUTURIZA)
 // ============================================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbx6rfIIr2kyzE2ptVkp7TtbM0jLFwdDH4Jig4L_HIKBfW3s6duXqhgNB7VIiQOsYks/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxR2C2gNhJjxagS3x18J-qNhIwJoPsxHyxhnQXNeL9sQMBkE4gfW8ZK1hpcLVpHI2E84Q/exec';
 
 const SUPABASE_URL  = 'https://vycjtmjvkwvxunxtkdyi.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Y2p0bWp2a3d2eHVueHRrZHlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MDY2OTYsImV4cCI6MjA4NzE4MjY5Nn0.wOoAZpA1i-320E8Rc-Ry6nk0KYsedFXb3aS4gkmbjHU';
@@ -15,7 +15,7 @@ const C = {
 };
 
 const RANKING_SETORES = ['VENDAS','RECEPCAO','REFILIACAO'];
-const SEM_FILTRO      = ['recorrencia','recorrencia_vendedor','campanha14'];
+const SEM_FILTRO      = ['recorrencia','recorrencia_vendedor','campanha14','vendas_tim'];
 
 // ── Cache ──────────────────────────────────────────────────────────────────
 const CACHE_MEM  = new Map();
@@ -69,6 +69,8 @@ async function fetchSupabase(endpoint, mes, ano) {
             url = `${SUPABASE_URL}/rest/v1/recorrencia_vendedor?select=*&limit=1`;
         } else if (endpoint === 'app') {
             url = `${SUPABASE_URL}/rest/v1/app_dashboard?mes=eq.${mes}&ano=eq.${ano}&select=*`;
+        } else if (endpoint === 'vendas_tim') {
+            url = `${SUPABASE_URL}/rest/v1/vendas_tim?mes=eq.${mes}&ano=eq.${ano}&select=*`;
         } else {
             url = `${SUPABASE_URL}/rest/v1/${endpoint}?mes=eq.${mes}&ano=eq.${ano}&select=*`;
         }
@@ -153,17 +155,13 @@ function rowToData(endpoint, row) {
     }
     
     if (endpoint === 'refuturiza') {
-        // 🔧 CORREÇÃO COMPLETA: Garante que os dados dos consultores sejam carregados corretamente
         let consultores = [];
-        
-        // Tenta parsear os consultores do Supabase
         try {
             if (typeof row.consultores === 'string') {
                 consultores = JSON.parse(row.consultores);
             } else if (Array.isArray(row.consultores)) {
                 consultores = row.consultores;
             } else if (row.consultores && typeof row.consultores === 'object') {
-                // Se for um objeto, tenta converter para array
                 consultores = Object.values(row.consultores);
             }
         } catch(e) {
@@ -171,7 +169,6 @@ function rowToData(endpoint, row) {
             consultores = [];
         }
         
-        // 🔧 Normaliza cada consultor com valores padrão
         const consultoresNormalizados = consultores.map(c => ({
             nome: c.nome || 'Desconhecido',
             total: Number(c.total) || Number(c.totalVendas) || 0,
@@ -180,7 +177,6 @@ function rowToData(endpoint, row) {
             semLigacao: Number(c.semLigacao) || Number(c.sem_ligacao) || 0
         }));
 
-        // 🔧 Remove duplicatas pelo nome (mantém o que tem mais vendas)
         const consultoresUnicos = {};
         consultoresNormalizados.forEach(c => {
             const key = c.nome.toUpperCase();
@@ -191,7 +187,6 @@ function rowToData(endpoint, row) {
 
         const consultoresFinal = Object.values(consultoresUnicos);
         
-        // 🔧 Dados gerais
         const totalBruto = Number(row.geral_total) || 0;
         const cancelado = Number(row.geral_cancelado) || 0;
         const comLigacao = Number(row.geral_com_ligacao) || 0;
@@ -199,9 +194,7 @@ function rowToData(endpoint, row) {
         const baseLiquida = totalBruto - cancelado;
         const percentualCorrigido = baseLiquida > 0 ? Math.round((comLigacao / baseLiquida) * 100) : 0;
         
-        // 🔧 Se não tiver consultores, mas tiver total bruto > 0, tenta extrair do row
         if (consultoresFinal.length === 0 && totalBruto > 0) {
-            // Tenta criar um consultor genérico com os dados totais
             consultoresFinal.push({
                 nome: 'Total Geral',
                 total: totalBruto,
@@ -223,6 +216,39 @@ function rowToData(endpoint, row) {
                 percentualComLigacao: percentualCorrigido
             },
             consultores: consultoresFinal
+        };
+    }
+    
+    // ========================================================================
+    // VENDAS TIM
+    // ========================================================================
+    if (endpoint === 'vendas_tim') {
+        let vendedores = [];
+        try {
+            if (typeof row.vendedores === 'string') {
+                vendedores = JSON.parse(row.vendedores);
+            } else if (Array.isArray(row.vendedores)) {
+                vendedores = row.vendedores;
+            } else if (row.vendedores && typeof row.vendedores === 'object') {
+                vendedores = Object.values(row.vendedores);
+            }
+        } catch(e) {
+            console.warn('Erro ao parsear vendedores TIM:', e);
+            vendedores = [];
+        }
+
+        return {
+            mes: row.mes_nome || 'Mês Desconhecido',
+            ano: row.ano || 'Ano Desconhecido',
+            geral: {
+                total: row.geral_total || 0,
+                ativacao: row.geral_ativacao || 0,
+                portabilidade: row.geral_portabilidade || 0,
+                pctAtivacao: row.geral_pct_ativacao || 0,
+                pctPortabilidade: row.geral_pct_portabilidade || 0
+            },
+            vendedores: vendedores,
+            totalVendedores: row.total_vendedores || vendedores.length || 0
         };
     }
     
@@ -332,8 +358,13 @@ document.addEventListener('DOMContentLoaded', function(){
         resumo:'Resumo Geral', documentacao:'Vendas / Documentação',
         app:'App', adimplencia:'Adimplência', recorrencia:'Recorrência',
         recorrencia_vendedor:'Recorrência Vendedor', refuturiza:'Refuturiza',
-        campanha14:'Campanha 14° Salário'
+        campanha14:'Campanha 14° Salário',
+        vendas_tim:'📱 Vendas TIM'
     };
+
+    // Controle de logo TIM
+    const logoPadrao = document.getElementById('logoPadrao');
+    const logoTim = document.getElementById('logoTim');
 
     dashboardBtns.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -346,11 +377,26 @@ document.addEventListener('DOMContentLoaded', function(){
                 periodSelector.style.display = SEM_FILTRO.includes(currentDashboard) ? 'none' : 'flex';
             }
 
+            // Controle de logo TIM
+            if (currentDashboard === 'vendas_tim') {
+                if (logoPadrao) logoPadrao.style.display = 'none';
+                if (logoTim) logoTim.style.display = 'block';
+            } else {
+                if (logoPadrao) logoPadrao.style.display = 'block';
+                if (logoTim) logoTim.style.display = 'none';
+            }
+
             closeSidebarMobile();
             if (window.updateFabVisibility) window.updateFabVisibility();
             loadDashboard();
         });
     });
+
+    // Logo inicial
+    if (currentDashboard === 'vendas_tim') {
+        if (logoPadrao) logoPadrao.style.display = 'none';
+        if (logoTim) logoTim.style.display = 'block';
+    }
 
     monthSelect.addEventListener('change', () => { currentMonth = parseInt(monthSelect.value); loadDashboard(); });
     yearSelect.addEventListener('change',  () => { currentYear  = parseInt(yearSelect.value);  loadDashboard(); });
@@ -470,6 +516,7 @@ function renderDashboard(){
         case 'recorrencia_vendedor': renderRecorrenciaVendedorDashboard(data); break;
         case 'refuturiza':           renderRefuturizaDashboard(data);          break;
         case 'campanha14':           renderCampanha14Dashboard(data);          break;
+        case 'vendas_tim':           renderVendasTimDashboard(data);           break;
         default: showError('Dashboard não encontrado: ' + currentDashboard);
     }
 }
@@ -617,7 +664,6 @@ function renderDocumentacaoDashboard(d) {
 
     const bySector = groupBySector(consultores);
     
-    // ⭐ GARANTE QUE OUTROS EXISTE
     if (!bySector['OUTROS']) {
         bySector['OUTROS'] = [];
     }
@@ -692,13 +738,11 @@ function renderDocumentacaoDashboard(d) {
     }).join('')}`;
 }
 
-// % sobre base líquida (sem cancelados)
 function calcPercentDoc(aprovados, total, cancelados) {
     const base = (total||0) - (cancelados||0);
     return base > 0 ? Math.round((aprovados / base) * 100) : 0;
 }
 
-// Mini bloco promoção/normal dentro do card do consultor
 function promoMiniCards(c) {
     if (!c.promo && !c.normal) return '';
     const p  = c.promo  || {};
@@ -725,7 +769,6 @@ function promoMiniCards(c) {
     </div>`;
 }
 
-// Seção comparativo Promoção vs Normal (cards do topo)
 function promoSection(d, temPromo) {
     if (!temPromo) return '';
     const p  = d.geral.promo  || {};
@@ -854,7 +897,6 @@ function renderRecorrenciaVendedorDashboard(d){
 // ============================================================================
 
 function renderRefuturizaDashboard(d) {
-    // 🔧 Debug: Verifica o que chegou
     console.log('📊 Dados recebidos para Refuturiza:', d);
     
     if (!d || !d.geral) {
@@ -862,29 +904,24 @@ function renderRefuturizaDashboard(d) {
         return;
     }
 
-    // 🔧 Garante que consultores seja um array
     let consultoresList = d.consultores || [];
     if (!Array.isArray(consultoresList)) {
         consultoresList = [];
     }
     
-    // 🔧 Log para debug
     console.log(`📊 ${consultoresList.length} consultores encontrados`);
     console.log('📊 Primeiro consultor:', consultoresList[0]);
     
-    // 🔧 CORREÇÃO: Base líquida = total - cancelados
     const totalBruto = Number(d.geral.total) || 0;
     const cancelados = Number(d.geral.cancelado) || 0;
     const baseLiquida = totalBruto - cancelados;
     const pG = baseLiquida > 0 ? Math.round((Number(d.geral.comLigacao) / baseLiquida) * 100) : 0;
 
-    // 🔧 Filtra apenas consultores com vendas (total > 0)
     const consultoresComVendas = consultoresList.filter(c => {
         const total = Number(c.total) || 0;
         return total > 0;
     });
     
-    // 🔧 Se não tiver consultores com vendas, mas tiver total bruto > 0, cria um registro agregado
     let consultoresParaExibir = consultoresComVendas;
     
     if (consultoresComVendas.length === 0 && totalBruto > 0) {
@@ -897,7 +934,6 @@ function renderRefuturizaDashboard(d) {
         }];
     }
     
-    // 🔧 Ordena por base líquida (total - cancelado) decrescente
     const consultoresOrdenados = [...consultoresParaExibir].sort((a, b) => {
         const baseA = (Number(a.total) || 0) - (Number(a.cancelado) || 0);
         const baseB = (Number(b.total) || 0) - (Number(b.cancelado) || 0);
@@ -907,7 +943,6 @@ function renderRefuturizaDashboard(d) {
     dashboardContent.innerHTML = `
     <h2 class="dash-title"><i class="fas fa-book" style="color:var(--accent-dark)"></i> Dashboard Refuturiza — ${d.mes || 'Mês'} ${d.ano || ''}</h2>
     
-    <!-- 🔧 CARD PRINCIPAL CORRIGIDO -->
     <div class="card card-refut" style="max-width:500px;margin:0 auto 28px">
         <div class="card-header">
             <div class="card-title">Refuturiza — Total da Loja</div>
@@ -927,7 +962,6 @@ function renderRefuturizaDashboard(d) {
     <h3 class="section-title"><i class="fas fa-users" style="color:var(--accent-dark)"></i> Desempenho por Consultor (${consultoresOrdenados.length})</h3>
     <div class="consultant-grid">
         ${consultoresOrdenados.map(c => {
-            // 🔧 CORREÇÃO: Base líquida por consultor
             const cTotal = Number(c.total) || 0;
             const cCancel = Number(c.cancelado) || 0;
             const cBase = cTotal - cCancel;
@@ -951,7 +985,6 @@ function renderRefuturizaDashboard(d) {
         }).join('')}
     </div>
 
-    <!-- 🔧 RESUMO FINAL CORRIGIDO -->
     <div class="card" style="margin-top:36px;background:linear-gradient(135deg,var(--primary),#007a3d);color:white">
         <div class="card-header" style="border-bottom-color:rgba(255,255,255,0.2)">
             <div class="card-title" style="color:white">📊 Resumo Final</div>
@@ -975,16 +1008,117 @@ function renderRefuturizaDashboard(d) {
 }
 
 // ============================================================================
+// DASHBOARD: VENDAS TIM
+// ============================================================================
+
+function renderVendasTimDashboard(d) {
+    if (!d || !d.geral) {
+        showError('Dados do Vendas TIM não encontrados');
+        return;
+    }
+
+    const { geral, vendedores, mes, ano, totalVendedores } = d;
+    
+    const TIM_BLUE = '#0054a6';
+    const TIM_BLUE_LIGHT = 'rgba(0,84,166,0.08)';
+    const TIM_BLUE_FADE = 'rgba(0,84,166,0.12)';
+    const TIM_BLUE_DARK = '#003d7a';
+
+    const pAtivacao = geral.pctAtivacao || 0;
+    const pPortabilidade = geral.pctPortabilidade || 0;
+
+    const vendedoresOrdenados = (vendedores || []).sort((a, b) => b.total - a.total);
+
+    dashboardContent.innerHTML = `
+    <h2 class="dash-title" style="border-bottom-color:${TIM_BLUE};">
+        <i class="fas fa-sim-card" style="color:${TIM_BLUE};"></i> 
+        Dashboard Vendas TIM — ${mes || 'Mês'} ${ano || ''}
+        <span style="font-size:0.6rem;font-weight:400;color:var(--text-muted);margin-left:auto;background:${TIM_BLUE_FADE};padding:4px 12px;border-radius:20px;color:${TIM_BLUE};">
+            <i class="fas fa-check-circle"></i> ${totalVendedores || 0} vendedores
+        </span>
+    </h2>
+
+    <div class="card card-tim" style="max-width:480px;margin:0 auto 28px;border-top:4px solid ${TIM_BLUE};">
+        <div class="card-header">
+            <div class="card-title" style="color:${TIM_BLUE};">
+                <i class="fas fa-chart-bar" style="color:${TIM_BLUE};"></i> Total Geral
+            </div>
+            <div class="card-icon" style="background:${TIM_BLUE_FADE};color:${TIM_BLUE};">
+                <i class="fas fa-sim-card"></i>
+            </div>
+        </div>
+        <div class="metric-grid">
+            ${metricItem('TOTAL VENDAS', geral.total, TIM_BLUE)}
+            ${metricItem('ATIVAÇÃO', geral.ativacao, TIM_BLUE)}
+            ${metricItem('PORTABILIDADE', geral.portabilidade, TIM_BLUE)}
+            ${metricPercentTim('% ATIVAÇÃO', pAtivacao)}
+            ${metricPercentTim('% PORTABILIDADE', pPortabilidade)}
+        </div>
+    </div>
+
+    ${vendedoresOrdenados.length > 0 ? `
+    <h3 class="section-title" style="border-bottom-color:${TIM_BLUE};">
+        <i class="fas fa-users" style="color:${TIM_BLUE};"></i> 
+        Vendedores (${vendedoresOrdenados.length})
+    </h3>
+    <div class="consultant-grid">
+        ${vendedoresOrdenados.map(c => {
+            const pAtiv = c.pctAtivacao || 0;
+            const pPort = c.pctPortabilidade || 0;
+            return `
+            <div class="consultant-card" style="border-left-color:${TIM_BLUE};">
+                <div class="consultant-header">
+                    <div class="consultant-name" style="color:${TIM_BLUE};">${c.nome}</div>
+                    <div class="consultant-sector sector-tim">TIM</div>
+                </div>
+                <div class="metric-grid">
+                    ${metricItem('TOTAL', c.total, TIM_BLUE)}
+                    ${metricItem('ATIVAÇÃO', c.ativacao, TIM_BLUE)}
+                    ${metricItem('PORTABILIDADE', c.portabilidade, TIM_BLUE)}
+                    ${metricPercentTim('% ATIVAÇÃO', pAtiv)}
+                    ${metricPercentTim('% PORTABILIDADE', pPort)}
+                </div>
+            </div>`;
+        }).join('')}
+    </div>
+
+    <div class="card" style="margin-top:36px;background:linear-gradient(135deg,${TIM_BLUE},${TIM_BLUE_DARK});color:white;border:none;">
+        <div class="card-header" style="border-bottom-color:rgba(255,255,255,0.2);">
+            <div class="card-title" style="color:white;">📊 Resumo Final</div>
+            <div class="card-icon" style="background:rgba(255,255,255,0.2);color:white;">
+                <i class="fas fa-clipboard-list"></i>
+            </div>
+        </div>
+        <div class="metric-grid">
+            ${metricItemWhite('Total Vendedores', vendedoresOrdenados.length)}
+            ${metricItemWhite('Total Vendas', geral.total)}
+            ${metricItemWhite('Média por Vendedor', vendedoresOrdenados.length > 0 ? Math.round(geral.total / vendedoresOrdenados.length) : 0)}
+            ${metricItemWhite('Melhor Vendedor', vendedoresOrdenados.length > 0 ? vendedoresOrdenados[0].nome + ' (' + vendedoresOrdenados[0].total + ')' : 'N/A')}
+            ${metricItemWhite('Taxa Ativação', pAtivacao + '%')}
+            ${metricItemWhite('Taxa Portabilidade', pPortabilidade + '%')}
+        </div>
+    </div>
+    ` : `
+    <div style="text-align:center;padding:40px;color:var(--gray)">
+        <i class="fas fa-info-circle" style="font-size:2.5rem;margin-bottom:16px;display:block;color:${TIM_BLUE};"></i>
+        <h3>Nenhum vendedor com vendas para ${mes || 'Mês'} ${ano || ''}</h3>
+        <p style="font-size:0.9rem;margin-top:8px;">Total de vendas: ${geral.total}</p>
+    </div>`}`;
+}
+
+function metricPercentTim(label, v) {
+    const cls = typeof v === 'number' ? getPercentClass(v) : 'percent-low';
+    const cor = v >= 70 ? '#0054a6' : v >= 50 ? '#f59e0b' : '#ef4444';
+    return `<div class="metric-item"><div class="metric-label">${label}</div><div class="metric-percent ${cls}" style="background:rgba(0,84,166,0.1);color:${cor}">${v}%</div></div>`;
+}
+
+// ============================================================================
 // HELPERS GERAIS
 // ============================================================================
 function metricItem(l,v,c){ const s=c?`style="color:${c};"`:''; return `<div class="metric-item"><div class="metric-label">${l}</div><div class="metric-value" ${s}>${v??0}</div></div>`; }
 function metricPercent(l,v){ const cls=getPercentClass(typeof v==='number'?v:parseInt(v)); return `<div class="metric-item"><div class="metric-label">${l}</div><div class="metric-percent ${cls}">${v}%</div></div>`; }
 function metricItemWhite(l,v){ return `<div class="metric-item"><div class="metric-label" style="color:rgba(255,255,255,0.75)">${l}</div><div class="metric-value" style="color:white">${v}</div></div>`; }
 function calcPercent(n,d){ if(!d||d===0)return 0; return Math.round((n/d)*100); }
-
-// ============================================================================
-// GROUP BY SECTOR - CORRIGIDO (GARANTE OUTROS)
-// ============================================================================
 
 function groupBySector(list) {
     const m = {};
@@ -996,15 +1130,10 @@ function groupBySector(list) {
         m[s].push(c);
     });
     
-    // ⭐⭐ GARANTE QUE OUTROS EXISTE
     if (!m['OUTROS']) m['OUTROS'] = [];
     
     return m;
 }
-
-// ============================================================================
-// SORT SECTORS - CORRIGIDO
-// ============================================================================
 
 function sortSectors(keys, order) {
     const uniqueKeys = [...new Set(keys)];
