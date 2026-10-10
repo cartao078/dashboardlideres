@@ -1798,3 +1798,143 @@ select:focus {
     .main-wrapper { margin-left: 0; }
     .dashboard-content { padding: 20px; }
 }
+/* ============================================================
+   RECORRÊNCIA — CARD GERAL 3 MESES
+   ============================================================ */
+
+.recorrencia-geral-card {
+    background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+    border-radius: 18px;
+    padding: 28px 32px;
+    margin-bottom: 36px;
+    color: white;
+    box-shadow: 0 8px 32px rgba(13,148,136,0.25);
+    position: relative;
+    overflow: hidden;
+}
+
+.recorrencia-geral-card::before {
+    content: '';
+    position: absolute;
+    top: -50%; right: -10%;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.recorrencia-geral-body {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 28px;
+    align-items: center;
+    position: relative;
+}
+
+.recorrencia-geral-numero {
+    text-align: center;
+    border-right: 1px solid rgba(255,255,255,0.2);
+    padding-right: 28px;
+}
+
+.recorrencia-geral-value {
+    font-size: 3.2rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 6px;
+    letter-spacing: -0.02em;
+}
+
+.recorrencia-geral-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    opacity: 0.85;
+}
+
+.recorrencia-geral-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 14px;
+}
+
+.recorrencia-geral-kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.recorrencia-geral-kpi-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.75;
+}
+
+.recorrencia-geral-kpi-value {
+    font-size: 1.4rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+.recorrencia-success { color: #bbf7d0; }
+.recorrencia-warning { color: #fde68a; }
+.recorrencia-danger  { color: #fecaca; }
+
+.recorrencia-geral-barra {
+    grid-column: 1 / -1;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.15);
+}
+
+.recorrencia-geral-barra-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.9;
+    margin-bottom: 8px;
+}
+
+.recorrencia-geral-barra-pct {
+    font-size: 1.1rem;
+    font-weight: 800;
+    opacity: 1;
+}
+
+.recorrencia-geral-barra-bg {
+    height: 10px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.recorrencia-geral-barra-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #bbf7d0, #ffffff);
+    border-radius: 6px;
+    transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+    .recorrencia-geral-body {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    .recorrencia-geral-numero {
+        border-right: none;
+        border-bottom: 1px solid rgba(255,255,255,0.2);
+        padding-right: 0;
+        padding-bottom: 20px;
+    }
+    .recorrencia-geral-value {
+        font-size: 2.4rem;
+    }
+}
