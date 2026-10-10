@@ -645,30 +645,72 @@ function renderDocumentacaoDashboard(d) {
     ${sectors.map(sector => {
         const list = bySector[sector] || [];
 
-        // ─── TELEVENDAS: consolidado ─────────────────────────────
-        if (sector === 'TELEVENDAS' && list.length > 0) {
-            const tot   = list.reduce((s,c) => s + (c.total || 0), 0);
-            const canc  = list.reduce((s,c) => s + (c.cancelados || 0), 0);
-            const aprov = list.reduce((s,c) => s + (c.aprovados || 0), 0);
-            const pend  = list.reduce((s,c) => s + (c.pendencias || 0), 0);
-            const pct   = calcPercentDoc(aprov, tot, canc);
-            return `
-            <div class="sector-card">
-                <div class="sector-header">
-                    <div class="sector-title">
-                        <i class="${getSectorIcon(sector)}"></i> ${sector} — Consolidado
-                        <span class="sector-count">${list.length} origem${list.length!==1?'s':''}</span>
-                    </div>
-                    <div class="metric-percent ${getPercentClass(pct)}">${pct}% aprovados</div>
-                </div>
-                <div class="metric-grid" style="grid-template-columns:repeat(4,1fr)">
-                    ${metricItem('Total', tot)}
-                    ${metricItem('Cancelados', canc, '#991b1b')}
-                    ${metricItem('Aprovados', aprov, 'var(--success)')}
-                    ${metricItem('Pendências', pend, 'var(--danger)')}
-                </div>
-            </div>`;
+        // ─── TELEVENDAS: card único consolidado (mesmo visual dos outros) ─
+if (sector === 'TELEVENDAS' && list.length > 0) {
+    // Soma todos os consultores de televendas
+    const cons = {
+        nome: '📺 TELEVENDAS — Consolidado',
+        total: 0, cancelados: 0, aprovados: 0, pendencias: 0,
+        naoEnviado: 0, expirado: 0, pendente: 0, reprovados: 0,
+        promo:  { total:0, cancelados:0, aprovados:0 },
+        normal: { total:0, cancelados:0, aprovados:0 }
+    };
+    list.forEach(c => {
+        cons.total        += c.total        || 0;
+        cons.cancelados   += c.cancelados   || 0;
+        cons.aprovados    += c.aprovados    || 0;
+        cons.pendencias   += c.pendencias   || 0;
+        cons.naoEnviado   += c.naoEnviado   || 0;
+        cons.expirado     += c.expirado     || 0;
+        cons.pendente     += c.pendente     || 0;
+        cons.reprovados   += c.reprovados   || 0;
+        if (c.promo) {
+            cons.promo.total      += c.promo.total      || 0;
+            cons.promo.cancelados += c.promo.cancelados || 0;
+            cons.promo.aprovados  += c.promo.aprovados  || 0;
         }
+        if (c.normal) {
+            cons.normal.total      += c.normal.total      || 0;
+            cons.normal.cancelados += c.normal.cancelados || 0;
+            cons.normal.aprovados  += c.normal.aprovados  || 0;
+        }
+    });
+
+    const pct   = calcPercentDoc(cons.aprovados, cons.total, cons.cancelados);
+    const tot   = cons.total;
+    const canc  = cons.cancelados;
+    const aprov = cons.aprovados;
+
+    return `
+    <div class="sector-card">
+        <div class="sector-header">
+            <div class="sector-title">
+                <i class="${getSectorIcon(sector)}"></i> ${sector}
+                <span class="sector-count">${list.length} origem${list.length!==1?'s':''} consolidada${list.length!==1?'s':''}</span>
+            </div>
+            <div class="metric-percent ${getPercentClass(pct)}">${pct}% aprovados</div>
+        </div>
+        <div class="consultant-grid">
+            <div class="consultant-card">
+                <div class="consultant-header">
+                    <div class="consultant-name">📺 TELEVENDAS — Consolidado</div>
+                    <div class="consultant-sector ${getSectorClass(sector)}">${sector}</div>
+                </div>
+                <div class="metric-grid">
+                    ${metricItem('Total',        cons.total || 0)}
+                    ${metricItem('Cancelados',   cons.cancelados || 0, '#991b1b')}
+                    ${metricItem('Base líquida', (cons.total || 0) - (cons.cancelados || 0))}
+                    ${metricItem('Aprovados',    cons.aprovados || 0, 'var(--success)')}
+                    ${metricItem('Pendências',   cons.pendencias || 0, 'var(--danger)')}
+                    ${metricItem('Não Enviado',  cons.naoEnviado || 0, 'var(--warning)')}
+                    ${metricItem('Expirado',     cons.expirado || 0, 'var(--gray)')}
+                    ${metricPercent('% Aprovados', pct)}
+                </div>
+                ${temColunasPromo ? promoMiniCards(cons) : ''}
+            </div>
+        </div>
+    </div>`;
+}
 
         if (list.length === 0) {
             return `
