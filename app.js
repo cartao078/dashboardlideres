@@ -2,7 +2,7 @@
 // DASHBOARD V22.0 - app.js — COM RECEPÇÃO + EQUIPES
 // ============================================================================
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbxfXxDp0yVac4TlnRkGPBhCq2Vl1eqtVmOBkWR6O-R2C9KewRAqcfXswmKll9FmOOJbXg/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxY4lTmtAnQHGo_XuWDgbUOwsa2V6PWHVvWgtu1--2tWjux6u6kOzom0eS7L6ir-60Qsg/exec';
 
 const SUPABASE_URL  = 'https://vycjtmjvkwvxunxtkdyi.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5Y2p0bWp2a3d2eHVueHRrZHlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MDY2OTYsImV4cCI6MjA4NzE4MjY5Nn0.wOoAZpA1i-320E8Rc-Ry6nk0KYsedFXb3aS4gkmbjHU';
