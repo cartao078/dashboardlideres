@@ -1,5 +1,5 @@
 // ============================================================================
-// DASHBOARD V21.1 - app.js — COM SUPABASE (CORRIGIDO REFUTURIZA)
+// DASHBOARD V22.0 - app.js — COM RECEPÇÃO + EQUIPES
 // ============================================================================
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbxfXxDp0yVac4TlnRkGPBhCq2Vl1eqtVmOBkWR6O-R2C9KewRAqcfXswmKll9FmOOJbXg/exec';
@@ -86,9 +86,14 @@ async function fetchSupabase(endpoint, mes, ano) {
 
 function rowToData(endpoint, row) {
     if (!row) return null;
-    
+
+    const parseJ = v => {
+        if (typeof v === 'string') { try { return JSON.parse(v); } catch(_) { return {}; } }
+        return v || {};
+    };
+
     if (endpoint === 'documentacao') {
-        const parseJ = v => typeof v === 'string' ? JSON.parse(v) : (v || {total:0,cancelados:0,aprovados:0,reprovados:0,expirado:0,pendente:0,naoEnviado:0});
+        const totVazio = {total:0,cancelados:0,aprovados:0,reprovados:0,expirado:0,pendente:0,naoEnviado:0,pendencias:0,promo:{total:0,cancelados:0,aprovados:0},normal:{total:0,cancelados:0,aprovados:0}};
         return {
             mes: row.mes_nome, ano: row.ano,
             temColunasPromo: row.tem_promocao || false,
@@ -97,16 +102,16 @@ function rowToData(endpoint, row) {
                 aprovados: row.geral_aprovados, pendencias: row.geral_pendencias,
                 reprovados: row.geral_reprovados, expirado: row.geral_expirado,
                 pendente: row.geral_pendente, naoEnviado: row.geral_nao_enviado,
-                promo:  parseJ(row.geral_promo),
-                normal: parseJ(row.geral_normal)
+                promo:  parseJ(row.geral_promo)  || {total:0,cancelados:0,aprovados:0},
+                normal: parseJ(row.geral_normal) || {total:0,cancelados:0,aprovados:0}
             },
             vendasLoja: {
                 total: row.loja_total, cancelados: row.loja_cancelados||0,
                 aprovados: row.loja_aprovados, pendencias: row.loja_pendencias,
                 reprovados: row.loja_reprovados, expirado: row.loja_expirado,
                 pendente: row.loja_pendente, naoEnviado: row.loja_nao_enviado,
-                promo:  parseJ(row.loja_promo),
-                normal: parseJ(row.loja_normal)
+                promo:  parseJ(row.loja_promo)  || {total:0,cancelados:0,aprovados:0},
+                normal: parseJ(row.loja_normal) || {total:0,cancelados:0,aprovados:0}
             },
             vendasWeb: {
                 total: row.web_total, cancelados: row.web_cancelados||0,
@@ -116,59 +121,62 @@ function rowToData(endpoint, row) {
                 promo:  {total:0,cancelados:0,aprovados:0},
                 normal: {total:0,cancelados:0,aprovados:0}
             },
-            consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : row.consultores
+            // ★ NOVO: Recepção
+            temRecepcao: row.tem_recepcao || false,
+            recepcao: {
+                indicacao: parseJ(row.recepcao_indicacao) || totVazio,
+                direta:    parseJ(row.recepcao_direta)    || totVazio,
+                total:     parseJ(row.recepcao_total)     || totVazio
+            },
+            consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : (row.consultores || [])
         };
     }
-    
+
     if (endpoint === 'app') {
         return {
             mes: row.mes_nome, ano: row.ano,
-            geral: { total: row.geral_total, sim: row.geral_sim, nao: row.geral_nao, cancelado: row.geral_cancelado, outros: row.geral_outros },
+            geral:   { total: row.geral_total, sim: row.geral_sim, nao: row.geral_nao, cancelado: row.geral_cancelado, outros: row.geral_outros },
             appLoja: { total: row.loja_total, sim: row.loja_sim, nao: row.loja_nao, cancelado: row.loja_cancelado, outros: row.loja_outros },
-            appWeb: { total: row.web_total, sim: row.web_sim, nao: row.web_nao, cancelado: row.web_cancelado, outros: row.web_outros },
-            consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : row.consultores,
+            appWeb:  { total: row.web_total, sim: row.web_sim, nao: row.web_nao, cancelado: row.web_cancelado, outros: row.web_outros },
+            // ★ NOVO: Equipes
+            equipeVendas:      parseJ(row.equipe_vendas)      || {total:0,sim:0,nao:0,cancelado:0,outros:0},
+            equipeConciliacao: parseJ(row.equipe_conciliacao) || {total:0,sim:0,nao:0,cancelado:0,outros:0},
+            consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : (row.consultores || []),
             consultorasRetencao: typeof row.consultoras_retencao === 'string' ? JSON.parse(row.consultoras_retencao) : (row.consultoras_retencao || [])
         };
     }
-    
+
     if (endpoint === 'adimplencia') {
         return {
             mes: row.mes_nome, ano: row.ano,
             geral: { totalTrocas: row.geral_total_trocas, mensOk: row.geral_mens_ok, mensAberto: row.geral_mens_aberto, mensAtraso: row.geral_mens_atraso, aprovados: row.geral_aprovados, pendentes: row.geral_pendentes, totalBi: row.geral_total_bi, foraBi: row.geral_fora_bi, okBi: row.geral_ok_bi, percentualAprovado: row.geral_percentual_aprovado },
-            consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : row.consultores
+            consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : (row.consultores || [])
         };
     }
-    
+
     if (endpoint === 'recorrencia') {
         return typeof row.dados === 'string' ? JSON.parse(row.dados) : row.dados;
     }
-    
+
     if (endpoint === 'recorrencia_vendedor') {
         return {
             mes: 'TODOS OS MESES', ano: 'TODOS OS ANOS',
             geral: { totalVendasPromocao: row.geral_total_vendas, totalOk: row.geral_total_ok, totalEmAberto: row.geral_total_em_aberto, totalAtraso: row.geral_total_atraso, totalOutros: row.geral_total_outros, percentualVendasOk: row.geral_percentual_ok },
-            consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : row.consultores,
+            consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : (row.consultores || []),
             dadosPorSetor: typeof row.dados_por_setor === 'string' ? JSON.parse(row.dados_por_setor) : row.dados_por_setor,
             totalConsultores: row.total_consultores,
             totalRegistros: row.total_registros
         };
     }
-    
+
     if (endpoint === 'refuturiza') {
         let consultores = [];
         try {
-            if (typeof row.consultores === 'string') {
-                consultores = JSON.parse(row.consultores);
-            } else if (Array.isArray(row.consultores)) {
-                consultores = row.consultores;
-            } else if (row.consultores && typeof row.consultores === 'object') {
-                consultores = Object.values(row.consultores);
-            }
-        } catch(e) {
-            console.warn('Erro ao parsear consultores:', e);
-            consultores = [];
-        }
-        
+            if (typeof row.consultores === 'string') consultores = JSON.parse(row.consultores);
+            else if (Array.isArray(row.consultores)) consultores = row.consultores;
+            else if (row.consultores && typeof row.consultores === 'object') consultores = Object.values(row.consultores);
+        } catch(e) { consultores = []; }
+
         const consultoresNormalizados = consultores.map(c => ({
             nome: c.nome || 'Desconhecido',
             total: Number(c.total) || Number(c.totalVendas) || 0,
@@ -180,62 +188,36 @@ function rowToData(endpoint, row) {
         const consultoresUnicos = {};
         consultoresNormalizados.forEach(c => {
             const key = c.nome.toUpperCase();
-            if (!consultoresUnicos[key] || c.total > consultoresUnicos[key].total) {
-                consultoresUnicos[key] = c;
-            }
+            if (!consultoresUnicos[key] || c.total > consultoresUnicos[key].total) consultoresUnicos[key] = c;
         });
-
         const consultoresFinal = Object.values(consultoresUnicos);
-        
+
         const totalBruto = Number(row.geral_total) || 0;
-        const cancelado = Number(row.geral_cancelado) || 0;
+        const cancelado  = Number(row.geral_cancelado) || 0;
         const comLigacao = Number(row.geral_com_ligacao) || 0;
         const semLigacao = Number(row.geral_sem_ligacao) || 0;
         const baseLiquida = totalBruto - cancelado;
         const percentualCorrigido = baseLiquida > 0 ? Math.round((comLigacao / baseLiquida) * 100) : 0;
-        
+
         if (consultoresFinal.length === 0 && totalBruto > 0) {
-            consultoresFinal.push({
-                nome: 'Total Geral',
-                total: totalBruto,
-                cancelado: cancelado,
-                comLigacao: comLigacao,
-                semLigacao: semLigacao
-            });
+            consultoresFinal.push({ nome:'Total Geral', total:totalBruto, cancelado, comLigacao, semLigacao });
         }
-        
+
         return {
-            mes: row.mes_nome || 'Mês Desconhecido', 
+            mes: row.mes_nome || 'Mês Desconhecido',
             ano: row.ano || 'Ano Desconhecido',
-            geral: { 
-                total: totalBruto, 
-                comLigacao: comLigacao, 
-                semLigacao: semLigacao, 
-                cancelado: cancelado,
-                baseLiquida: baseLiquida,
-                percentualComLigacao: percentualCorrigido
-            },
+            geral: { total: totalBruto, comLigacao, semLigacao, cancelado, baseLiquida, percentualComLigacao: percentualCorrigido },
             consultores: consultoresFinal
         };
     }
-    
-    // ========================================================================
-    // VENDAS TIM
-    // ========================================================================
+
     if (endpoint === 'vendas_tim') {
         let vendedores = [];
         try {
-            if (typeof row.vendedores === 'string') {
-                vendedores = JSON.parse(row.vendedores);
-            } else if (Array.isArray(row.vendedores)) {
-                vendedores = row.vendedores;
-            } else if (row.vendedores && typeof row.vendedores === 'object') {
-                vendedores = Object.values(row.vendedores);
-            }
-        } catch(e) {
-            console.warn('Erro ao parsear vendedores TIM:', e);
-            vendedores = [];
-        }
+            if (typeof row.vendedores === 'string') vendedores = JSON.parse(row.vendedores);
+            else if (Array.isArray(row.vendedores)) vendedores = row.vendedores;
+            else if (row.vendedores && typeof row.vendedores === 'object') vendedores = Object.values(row.vendedores);
+        } catch(e) { vendedores = []; }
 
         return {
             mes: row.mes_nome || 'Mês Desconhecido',
@@ -251,7 +233,7 @@ function rowToData(endpoint, row) {
             totalVendedores: row.total_vendedores || vendedores.length || 0
         };
     }
-    
+
     return null;
 }
 
@@ -267,10 +249,7 @@ async function fetchData(endpoint, mes, ano) {
         const resp = await fetch(url);
         if (!resp.ok) {
             console.warn(`[Apps Script] HTTP ${resp.status} para endpoint "${endpoint}"`);
-            return {
-                status: 'error',
-                error: `Servidor retornou erro ${resp.status}. Tente novamente em instantes.`
-            };
+            return { status:'error', error:`Servidor retornou erro ${resp.status}. Tente novamente em instantes.` };
         }
         const json = await resp.json();
         if (json.status === 'success') {
@@ -283,9 +262,7 @@ async function fetchData(endpoint, mes, ano) {
         console.error(`[Apps Script] Falha no endpoint "${endpoint}":`, err);
         return {
             status: 'error',
-            error: isOffline
-                ? 'Sem conexão com a internet.'
-                : 'Não foi possível conectar ao servidor de dados.'
+            error: isOffline ? 'Sem conexão com a internet.' : 'Não foi possível conectar ao servidor de dados.'
         };
     }
 }
@@ -362,7 +339,6 @@ document.addEventListener('DOMContentLoaded', function(){
         vendas_tim:'📱 Vendas TIM'
     };
 
-    // Controle de logo TIM
     const logoPadrao = document.getElementById('logoPadrao');
     const logoTim = document.getElementById('logoTim');
 
@@ -377,7 +353,6 @@ document.addEventListener('DOMContentLoaded', function(){
                 periodSelector.style.display = SEM_FILTRO.includes(currentDashboard) ? 'none' : 'flex';
             }
 
-            // Controle de logo TIM
             if (currentDashboard === 'vendas_tim') {
                 if (logoPadrao) logoPadrao.style.display = 'block';
                 if (logoTim) logoTim.style.display = 'block';
@@ -392,7 +367,6 @@ document.addEventListener('DOMContentLoaded', function(){
         });
     });
 
-    // Logo inicial
     if (currentDashboard === 'vendas_tim') {
         if (logoPadrao) logoPadrao.style.display = 'block';
         if (logoTim) logoTim.style.display = 'block';
@@ -414,23 +388,15 @@ document.addEventListener('DOMContentLoaded', function(){
     function setSidebarCollapsed(collapsed) {
         if (collapsed) {
             sidebar.classList.add('collapsed');
-            if (collapseIcon) {
-                collapseIcon.classList.remove('fa-chevron-left');
-                collapseIcon.classList.add('fa-chevron-right');
-            }
+            if (collapseIcon) { collapseIcon.classList.remove('fa-chevron-left'); collapseIcon.classList.add('fa-chevron-right'); }
         } else {
             sidebar.classList.remove('collapsed');
-            if (collapseIcon) {
-                collapseIcon.classList.remove('fa-chevron-right');
-                collapseIcon.classList.add('fa-chevron-left');
-            }
+            if (collapseIcon) { collapseIcon.classList.remove('fa-chevron-right'); collapseIcon.classList.add('fa-chevron-left'); }
         }
         try { localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0'); } catch(e){}
     }
 
-    try {
-        if (localStorage.getItem(COLLAPSE_KEY) === '1') setSidebarCollapsed(true);
-    } catch(e){}
+    try { if (localStorage.getItem(COLLAPSE_KEY) === '1') setSidebarCollapsed(true); } catch(e){}
 
     if (collapseBtn) {
         collapseBtn.addEventListener('click', () => {
@@ -450,15 +416,13 @@ document.addEventListener('DOMContentLoaded', function(){
         });
     }
 
-    if (sidebarOverlay) {
-        sidebarOverlay.addEventListener('click', closeSidebarMobile);
-    }
+    if (sidebarOverlay) sidebarOverlay.addEventListener('click', closeSidebarMobile);
 
     loadDashboard();
     initPeriodModal();
 });
 
-// ── loadDashboard — skeleton + erro detalhado ─────────────────────────────
+// ── loadDashboard ──────────────────────────────────────────────────────────
 async function loadDashboard(){
     if(currentDashboard === 'resumo'){ await loadResumoDashboard(); return; }
 
@@ -525,7 +489,6 @@ function renderDashboard(){
 async function loadResumoDashboard(){
     const eps     = ['documentacao','app','adimplencia'];
     const results = {};
-    const labels  = {documentacao:'Vendas', app:'App', adimplencia:'Adimplência'};
 
     const allCached = eps.every(ep => !!getCached(cacheKey(ep, currentMonth, currentYear)));
 
@@ -542,18 +505,16 @@ async function loadResumoDashboard(){
         return;
     }
 
-    let loaded = 0;
     showSkeleton();
 
     await Promise.all(eps.map(async ep => {
         const k = cacheKey(ep, currentMonth, currentYear);
         const cached = getCached(k);
-        if(cached){ results[ep] = cached; loaded++; return; }
+        if(cached){ results[ep] = cached; return; }
         try{
             const r = await fetchData(ep, currentMonth, currentYear);
             if(r.status==='success'){ setCache(k, r.data); results[ep]=r.data; }
         }catch(_){}
-        loaded++;
     }));
 
     hideSkeleton();
@@ -640,12 +601,12 @@ function buildRankingCompleto(consultores, mes, ano){
 }
 
 // ============================================================================
-// DASHBOARD: VENDAS — V21.1 (COM OUTROS CORRIGIDO)
+// DASHBOARD: VENDAS / DOCUMENTAÇÃO  — V22 COM RECEPÇÃO
 // ============================================================================
 
 function renderDocumentacaoDashboard(d) {
-    const { geral, vendasLoja, vendasWeb, consultores, mes, ano, temColunasPromo } = d;
-    
+    const { geral, vendasLoja, vendasWeb, consultores, mes, ano, temColunasPromo, recepcao, temRecepcao } = d;
+
     if (!consultores || consultores.length === 0) {
         dashboardContent.innerHTML = `
             <h2 class="dash-title"><i class="fas fa-folder" style="color:var(--primary)"></i> Dashboard de Vendas — ${mes} ${ano}</h2>
@@ -663,24 +624,52 @@ function renderDocumentacaoDashboard(d) {
     const pW = calcPercentDoc(vendasWeb.aprovados, vendasWeb.total, vendasWeb.cancelados||0);
 
     const bySector = groupBySector(consultores);
-    
-    if (!bySector['OUTROS']) {
-        bySector['OUTROS'] = [];
-    }
-    
+    if (!bySector['OUTROS']) bySector['OUTROS'] = [];
     const sectors = sortSectors(Object.keys(bySector), ['VENDAS','RECEPCAO','REFILIACAO','WEB SITE','TELEVENDAS','OUTROS']);
 
     dashboardContent.innerHTML = `
     <h2 class="dash-title"><i class="fas fa-folder" style="color:var(--primary)"></i> Dashboard de Vendas — ${mes} ${ano}</h2>
+
     <div class="main-cards">
         ${cardDoc('Total de Vendas', 'fas fa-chart-bar', geral, pG)}
         ${cardDoc('Vendas Loja',     'fas fa-store',     vendasLoja, pL)}
         ${cardDoc('Vendas Web/Tele', 'fas fa-globe',     vendasWeb,  pW)}
     </div>
+
+    ${temRecepcao ? renderRecepcaoBlocoHTML(recepcao) : ''}
+
     ${promoSection(d, temColunasPromo)}
+
     <h3 class="section-title"><i class="fas fa-layer-group" style="color:var(--primary)"></i> Desempenho por Setor</h3>
+
     ${sectors.map(sector => {
         const list = bySector[sector] || [];
+
+        // ─── TELEVENDAS: consolidado ─────────────────────────────
+        if (sector === 'TELEVENDAS' && list.length > 0) {
+            const tot   = list.reduce((s,c) => s + (c.total || 0), 0);
+            const canc  = list.reduce((s,c) => s + (c.cancelados || 0), 0);
+            const aprov = list.reduce((s,c) => s + (c.aprovados || 0), 0);
+            const pend  = list.reduce((s,c) => s + (c.pendencias || 0), 0);
+            const pct   = calcPercentDoc(aprov, tot, canc);
+            return `
+            <div class="sector-card">
+                <div class="sector-header">
+                    <div class="sector-title">
+                        <i class="${getSectorIcon(sector)}"></i> ${sector} — Consolidado
+                        <span class="sector-count">${list.length} origem${list.length!==1?'s':''}</span>
+                    </div>
+                    <div class="metric-percent ${getPercentClass(pct)}">${pct}% aprovados</div>
+                </div>
+                <div class="metric-grid" style="grid-template-columns:repeat(4,1fr)">
+                    ${metricItem('Total', tot)}
+                    ${metricItem('Cancelados', canc, '#991b1b')}
+                    ${metricItem('Aprovados', aprov, 'var(--success)')}
+                    ${metricItem('Pendências', pend, 'var(--danger)')}
+                </div>
+            </div>`;
+        }
+
         if (list.length === 0) {
             return `
             <div class="sector-card" style="border-top-color:var(--gray)">
@@ -696,12 +685,12 @@ function renderDocumentacaoDashboard(d) {
                 </div>
             </div>`;
         }
-        
+
         const tot   = list.reduce((s,c) => s + (c.total || 0), 0);
         const canc  = list.reduce((s,c) => s + (c.cancelados || 0), 0);
         const aprov = list.reduce((s,c) => s + (c.aprovados || 0), 0);
         const pct   = calcPercentDoc(aprov, tot, canc);
-        
+
         return `
         <div class="sector-card">
             <div class="sector-header">
@@ -714,11 +703,25 @@ function renderDocumentacaoDashboard(d) {
             <div class="consultant-grid">
                 ${list.sort((a,b) => (b.total || 0) - (a.total || 0)).map(c => {
                     const p = calcPercentDoc(c.aprovados, c.total, c.cancelados||0);
+                    const isRecepcao = (c.setor||'').toUpperCase() === 'RECEPCAO';
+
+                    // Badge de indicação/direta no header do consultor da recepção
+                    let badgeRecepcao = '';
+                    if (isRecepcao && c.recepcao) {
+                        const indT = c.recepcao.indicacao?.total || 0;
+                        const dirT = c.recepcao.direta?.total || 0;
+                        badgeRecepcao = `
+                            <div class="recepcao-badge-mini">
+                                <span class="rec-badge rec-badge-ind"><i class="fas fa-crown"></i> ${indT}</span>
+                                <span class="rec-badge rec-badge-dir"><i class="fas fa-bullseye"></i> ${dirT}</span>
+                            </div>`;
+                    }
+
                     return `
-                    <div class="consultant-card">
+                    <div class="consultant-card ${isRecepcao?'consultant-card-recepcao':''}">
                         <div class="consultant-header">
                             <div class="consultant-name">${c.nome || 'Sem nome'}</div>
-                            <div class="consultant-sector ${getSectorClass(sector)}">${sector}</div>
+                            ${isRecepcao ? badgeRecepcao : `<div class="consultant-sector ${getSectorClass(sector)}">${sector}</div>`}
                         </div>
                         <div class="metric-grid">
                             ${metricItem('Total',        c.total || 0)}
@@ -738,6 +741,173 @@ function renderDocumentacaoDashboard(d) {
     }).join('')}`;
 }
 
+// ★ NOVO: Bloco visual da Recepção
+function renderRecepcaoBlocoHTML(rec) {
+    if (!rec) return '';
+    const ind = rec.indicacao || {};
+    const dir = rec.direta    || {};
+    const tot = rec.total     || {};
+
+    const totalInd = tot.total || 0;
+    const totalDir = dir.total || 0;
+    const pInd = calcPercentDoc(ind.aprovados || 0, ind.total || 0, ind.cancelados || 0);
+    const pDir = calcPercentDoc(dir.aprovados || 0, dir.total || 0, dir.cancelados || 0);
+    const pTot = calcPercentDoc(tot.aprovados || 0, tot.total || 0, tot.cancelados || 0);
+
+    // Percentuais de divisão pra doughnut
+    const pctInd = totalInd > 0 ? Math.round((ind.total / totalInd) * 100) : 0;
+    const pctDir = totalInd > 0 ? 100 - pctInd : 0;
+
+    return `
+    <h3 class="section-title" style="border-bottom-color:#9333ea">
+        <i class="fas fa-users" style="color:#9333ea"></i> Recepção — Indicação vs Venda Direta
+    </h3>
+
+    <div class="recepcao-grid">
+        <!-- CARD INDICAÇÃO -->
+        <div class="recepcao-card recepcao-card-ind">
+            <div class="recepcao-card-header">
+                <i class="fas fa-crown"></i>
+                <span>INDICAÇÃO</span>
+            </div>
+            <div class="recepcao-card-body">
+                <div class="recepcao-numero">${ind.total || 0}</div>
+                <div class="recepcao-numero-label">vendas</div>
+                <div class="recepcao-kpis">
+                    <div class="recepcao-kpi">
+                        <span class="recepcao-kpi-icon"><i class="fas fa-check-circle"></i></span>
+                        <span class="recepcao-kpi-label">Aprovados</span>
+                        <span class="recepcao-kpi-value">${ind.aprovados || 0}</span>
+                    </div>
+                    <div class="recepcao-kpi">
+                        <span class="recepcao-kpi-icon"><i class="fas fa-times-circle"></i></span>
+                        <span class="recepcao-kpi-label">Cancelados</span>
+                        <span class="recepcao-kpi-value">${ind.cancelados || 0}</span>
+                    </div>
+                    <div class="recepcao-kpi">
+                        <span class="recepcao-kpi-icon"><i class="fas fa-exclamation-triangle"></i></span>
+                        <span class="recepcao-kpi-label">Pendências</span>
+                        <span class="recepcao-kpi-value">${ind.pendencias || 0}</span>
+                    </div>
+                </div>
+                <div class="recepcao-barra-wrap">
+                    <div class="recepcao-barra-label">
+                        <span>Aprovação</span>
+                        <span class="recepcao-barra-pct">${pInd}%</span>
+                    </div>
+                    <div class="recepcao-barra-bg">
+                        <div class="recepcao-barra-fill recepcao-barra-ind" style="width:${pInd}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CARD VENDA DIRETA -->
+        <div class="recepcao-card recepcao-card-dir">
+            <div class="recepcao-card-header">
+                <i class="fas fa-bullseye"></i>
+                <span>VENDA DIRETA</span>
+            </div>
+            <div class="recepcao-card-body">
+                <div class="recepcao-numero">${dir.total || 0}</div>
+                <div class="recepcao-numero-label">vendas</div>
+                <div class="recepcao-kpis">
+                    <div class="recepcao-kpi">
+                        <span class="recepcao-kpi-icon"><i class="fas fa-check-circle"></i></span>
+                        <span class="recepcao-kpi-label">Aprovados</span>
+                        <span class="recepcao-kpi-value">${dir.aprovados || 0}</span>
+                    </div>
+                    <div class="recepcao-kpi">
+                        <span class="recepcao-kpi-icon"><i class="fas fa-times-circle"></i></span>
+                        <span class="recepcao-kpi-label">Cancelados</span>
+                        <span class="recepcao-kpi-value">${dir.cancelados || 0}</span>
+                    </div>
+                    <div class="recepcao-kpi">
+                        <span class="recepcao-kpi-icon"><i class="fas fa-exclamation-triangle"></i></span>
+                        <span class="recepcao-kpi-label">Pendências</span>
+                        <span class="recepcao-kpi-value">${dir.pendencias || 0}</span>
+                    </div>
+                </div>
+                <div class="recepcao-barra-wrap">
+                    <div class="recepcao-barra-label">
+                        <span>Aprovação</span>
+                        <span class="recepcao-barra-pct">${pDir}%</span>
+                    </div>
+                    <div class="recepcao-barra-bg">
+                        <div class="recepcao-barra-fill recepcao-barra-dir" style="width:${pDir}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CARD TOTAL + DOUGHNUT -->
+        <div class="recepcao-card recepcao-card-tot">
+            <div class="recepcao-card-header">
+                <i class="fas fa-chart-pie"></i>
+                <span>TOTAL RECEPÇÃO</span>
+            </div>
+            <div class="recepcao-card-body">
+                <div class="recepcao-numero">${tot.total || 0}</div>
+                <div class="recepcao-numero-label">vendas</div>
+                <div class="recepcao-doughnut-wrap">
+                    <canvas id="recDoughnut"></canvas>
+                </div>
+                <div class="recepcao-doughnut-legend">
+                    <div class="rec-leg-item">
+                        <span class="rec-leg-dot" style="background:#9333ea"></span>
+                        <span class="rec-leg-label">Indicação</span>
+                        <span class="rec-leg-val">${ind.total || 0} (${pctInd}%)</span>
+                    </div>
+                    <div class="rec-leg-item">
+                        <span class="rec-leg-dot" style="background:#1e40af"></span>
+                        <span class="rec-leg-label">Venda Direta</span>
+                        <span class="rec-leg-val">${dir.total || 0} (${pctDir}%)</span>
+                    </div>
+                </div>
+                <div class="recepcao-barra-wrap">
+                    <div class="recepcao-barra-label">
+                        <span>Aprovação total</span>
+                        <span class="recepcao-barra-pct">${pTot}%</span>
+                    </div>
+                    <div class="recepcao-barra-bg">
+                        <div class="recepcao-barra-fill recepcao-barra-tot" style="width:${pTot}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
+// Depois de render, criar o doughnut
+function renderRecepcaoDoughnut(rec) {
+    if (!rec || !document.getElementById('recDoughnut')) return;
+    const ind = rec.indicacao?.total || 0;
+    const dir = rec.direta?.total || 0;
+    if (ind + dir === 0) return;
+
+    createChart('recDoughnut', {
+        type: 'doughnut',
+        data: {
+            labels: ['Indicação', 'Venda Direta'],
+            datasets: [{
+                data: [ind, dir],
+                backgroundColor: ['#9333ea', '#1e40af'],
+                borderWidth: 0,
+                hoverOffset: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+                legend: { display: false },
+                tooltip: { callbacks: { label: ctx => `${ctx.label}: ${ctx.raw}` } }
+            }
+        }
+    });
+}
+
 function calcPercentDoc(aprovados, total, cancelados) {
     const base = (total||0) - (cancelados||0);
     return base > 0 ? Math.round((aprovados / base) * 100) : 0;
@@ -755,14 +925,12 @@ function promoMiniCards(c) {
         <div style="background:var(--primary-light);border-radius:8px;padding:8px;border-left:3px solid var(--primary)">
             <div style="font-size:10px;font-weight:700;color:var(--primary-dark);margin-bottom:4px">▶ PROMOÇÃO</div>
             <div style="font-size:11px;color:var(--text)">Total: <b>${p.total||0}</b></div>
-            <div style="font-size:11px;color:var(--text)">Cancelados: <b style="color:#991b1b">${p.cancelados||0}</b></div>
             <div style="font-size:11px;color:var(--text)">Aprovados: <b style="color:var(--success)">${p.aprovados||0}</b></div>
             <div style="margin-top:4px"><span class="metric-percent ${getPercentClass(pP)}">${pP}%</span></div>
         </div>
         <div style="background:#f0f9e8;border-radius:8px;padding:8px;border-left:3px solid var(--accent)">
             <div style="font-size:10px;font-weight:700;color:var(--accent-dark);margin-bottom:4px">▶ NORMAL</div>
             <div style="font-size:11px;color:var(--text)">Total: <b>${n.total||0}</b></div>
-            <div style="font-size:11px;color:var(--text)">Cancelados: <b style="color:#991b1b">${n.cancelados||0}</b></div>
             <div style="font-size:11px;color:var(--text)">Aprovados: <b style="color:var(--success)">${n.aprovados||0}</b></div>
             <div style="margin-top:4px"><span class="metric-percent ${getPercentClass(pN)}">${pN}%</span></div>
         </div>
@@ -832,21 +1000,188 @@ function cardDoc(t, icon, d, pct) {
 }
 
 // ============================================================================
-// DASHBOARD: APP
+// DASHBOARD: APP — V22 COM EQUIPES
 // ============================================================================
 function renderAppDashboard(d){
-    const {geral,appLoja,appWeb,consultores,consultorasRetencao,mes,ano}=d;
-    const pG=calcPercent(geral.sim,geral.total),pL=calcPercent(appLoja.sim,appLoja.total),pW=calcPercent(appWeb.sim,appWeb.total);
-    const regular=consultores.filter(c=>!c.origem||c.origem!=='retencao');
-    const bySector=groupBySector(regular);
-    const sectors=sortSectors(Object.keys(bySector),['VENDAS','RECEPCAO','REFILIACAO','WEB SITE','TELEVENDAS','OUTROS']);
-    dashboardContent.innerHTML=`
+    const {geral, appLoja, appWeb, consultores, consultorasRetencao, mes, ano, equipeVendas, equipeConciliacao} = d;
+
+    const pG = calcPercent(geral.sim, geral.total);
+    const pL = calcPercent(appLoja.sim, appLoja.total);
+    const pW = calcPercent(appWeb.sim, appWeb.total);
+
+    const regular = consultores.filter(c => !c.origem || c.origem !== 'retencao');
+    const bySector = groupBySector(regular);
+    const sectors = sortSectors(Object.keys(bySector), ['VENDAS','RECEPCAO','REFILIACAO','WEB SITE','TELEVENDAS','OUTROS']);
+
+    dashboardContent.innerHTML = `
     <h2 class="dash-title"><i class="fas fa-mobile-alt" style="color:var(--teal)"></i> Dashboard App — ${mes} ${ano}</h2>
-    <div class="main-cards">${cardApp('App — Total Geral','fas fa-chart-pie',geral,pG)}${cardApp('App — Loja','fas fa-store',appLoja,pL)}${cardApp('App — Web/Tele','fas fa-globe',appWeb,pW)}</div>
-    ${consultorasRetencao&&consultorasRetencao.length>0?`<div class="retention-section"><div class="retention-header"><i class="fas fa-crown"></i><h3>Consultoras de Retenção</h3></div><div class="consultant-grid">${consultorasRetencao.map(c=>{const p=calcPercent(c.sim,c.total);return `<div class="consultant-card" style="border-left:3px solid #f59e0b;"><div class="consultant-header"><div class="consultant-name">${c.nome} (RETENÇÃO)</div><div class="consultant-sector sector-retencao">RETENÇÃO</div></div><div class="metric-grid">${metricItem('Total',c.total)}${metricItem('Com App',c.sim,'var(--success)')}${metricItem('Sem App',c.nao,'var(--danger)')}${metricItem('Cancelados',c.cancelado||0,'var(--gray)')}${metricPercent('% Com App',p)}</div></div>`;}).join('')}</div></div>`:''}
+
+    <div class="main-cards">
+        ${cardApp('App — Total Geral', 'fas fa-chart-pie', geral, pG)}
+        ${cardApp('App — Loja',        'fas fa-store',     appLoja, pL)}
+        ${cardApp('App — Web/Tele',    'fas fa-globe',     appWeb,  pW)}
+    </div>
+
+    ${renderEquipesHTML(equipeVendas, equipeConciliacao)}
+
+    ${consultorasRetencao && consultorasRetencao.length > 0 ? `
+        <div class="retention-section">
+            <div class="retention-header">
+                <i class="fas fa-crown"></i>
+                <h3>Consultoras de Retenção</h3>
+            </div>
+            <div class="consultant-grid">
+                ${consultorasRetencao.map(c => {
+                    const p = calcPercent(c.sim, c.total);
+                    return `
+                    <div class="consultant-card" style="border-left:3px solid #f59e0b;">
+                        <div class="consultant-header">
+                            <div class="consultant-name">${c.nome} (RETENÇÃO)</div>
+                            <div class="consultant-sector sector-retencao">RETENÇÃO</div>
+                        </div>
+                        <div class="metric-grid">
+                            ${metricItem('Total', c.total)}
+                            ${metricItem('Com App', c.sim, 'var(--success)')}
+                            ${metricItem('Sem App', c.nao, 'var(--danger)')}
+                            ${metricItem('Cancelados', c.cancelado||0, 'var(--gray)')}
+                            ${metricPercent('% Com App', p)}
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>` : ''}
+
     <h3 class="section-title"><i class="fas fa-layer-group" style="color:var(--teal)"></i> Desempenho por Setor</h3>
-    ${sectors.map(sector=>{const list=bySector[sector];const tot=list.reduce((s,c)=>s+c.total,0),sim=list.reduce((s,c)=>s+(c.sim||0),0);const pct=calcPercent(sim,tot);return `<div class="sector-card"><div class="sector-header"><div class="sector-title"><i class="${getSectorIcon(sector)}"></i> ${sector}<span class="sector-count">${list.length} consultor${list.length!==1?'es':''}</span></div><div class="metric-percent ${getPercentClass(pct)}">${pct}% com app</div></div><div class="consultant-grid">${list.sort((a,b)=>b.total-a.total).map(c=>{const p=calcPercent(c.sim||0,c.total);return `<div class="consultant-card"><div class="consultant-header"><div class="consultant-name">${c.nome}</div><div class="consultant-sector ${getSectorClass(sector)}">${sector}</div></div><div class="metric-grid">${metricItem('Total',c.total)}${metricItem('Com App',c.sim||0,'var(--success)')}${metricItem('Sem App',c.nao||0,'var(--danger)')}${metricItem('Cancelados',c.cancelado||0,'var(--gray)')}${metricPercent('% Com App',p)}</div></div>`;}).join('')}</div></div>`;}).join('')}`;
+
+    ${sectors.map(sector => {
+        const list = bySector[sector];
+        const tot = list.reduce((s,c) => s + c.total, 0);
+        const sim = list.reduce((s,c) => s + (c.sim||0), 0);
+        const pct = calcPercent(sim, tot);
+        return `
+        <div class="sector-card">
+            <div class="sector-header">
+                <div class="sector-title">
+                    <i class="${getSectorIcon(sector)}"></i> ${sector}
+                    <span class="sector-count">${list.length} consultor${list.length!==1?'es':''}</span>
+                </div>
+                <div class="metric-percent ${getPercentClass(pct)}">${pct}% com app</div>
+            </div>
+            <div class="consultant-grid">
+                ${list.sort((a,b) => b.total - a.total).map(c => {
+                    const p = calcPercent(c.sim||0, c.total);
+                    return `
+                    <div class="consultant-card">
+                        <div class="consultant-header">
+                            <div class="consultant-name">${c.nome}</div>
+                            <div class="consultant-sector ${getSectorClass(sector)}">${sector}</div>
+                        </div>
+                        <div class="metric-grid">
+                            ${metricItem('Total', c.total)}
+                            ${metricItem('Com App', c.sim||0, 'var(--success)')}
+                            ${metricItem('Sem App', c.nao||0, 'var(--danger)')}
+                            ${metricItem('Cancelados', c.cancelado||0, 'var(--gray)')}
+                            ${metricPercent('% Com App', p)}
+                        </div>
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>`;
+    }).join('')}`;
 }
+
+// ★ NOVO: Bloco das Equipes
+function renderEquipesHTML(eqVendas, eqConc) {
+    if (!eqVendas && !eqConc) return '';
+    const v = eqVendas || {total:0,sim:0,nao:0,cancelado:0,outros:0};
+    const c = eqConc   || {total:0,sim:0,nao:0,cancelado:0,outros:0};
+    const pV = calcPercent(v.sim, v.total);
+    const pC = calcPercent(c.sim, c.total);
+
+    return `
+    <h3 class="section-title" style="border-bottom-color:#1e40af">
+        <i class="fas fa-users" style="color:#1e40af"></i> Comparativo de Equipes
+    </h3>
+
+    <div class="equipe-grid">
+        <!-- EQUIPE VENDAS -->
+        <div class="equipe-card equipe-card-vendas">
+            <div class="equipe-card-header">
+                <i class="fas fa-trophy"></i>
+                <span>EQUIPE VENDAS</span>
+            </div>
+            <div class="equipe-card-body">
+                <div class="equipe-numero">${v.total || 0}</div>
+                <div class="equipe-numero-label">clientes</div>
+                <div class="equipe-kpis">
+                    <div class="equipe-kpi">
+                        <span class="equipe-kpi-icon"><i class="fas fa-check-circle"></i></span>
+                        <span class="equipe-kpi-label">Com App</span>
+                        <span class="equipe-kpi-value">${v.sim || 0}</span>
+                    </div>
+                    <div class="equipe-kpi">
+                        <span class="equipe-kpi-icon"><i class="fas fa-times-circle"></i></span>
+                        <span class="equipe-kpi-label">Sem App</span>
+                        <span class="equipe-kpi-value">${v.nao || 0}</span>
+                    </div>
+                    <div class="equipe-kpi">
+                        <span class="equipe-kpi-icon"><i class="fas fa-ban"></i></span>
+                        <span class="equipe-kpi-label">Cancelados</span>
+                        <span class="equipe-kpi-value">${v.cancelado || 0}</span>
+                    </div>
+                </div>
+                <div class="recepcao-barra-wrap">
+                    <div class="recepcao-barra-label">
+                        <span>Adesão ao App</span>
+                        <span class="recepcao-barra-pct">${pV}%</span>
+                    </div>
+                    <div class="recepcao-barra-bg">
+                        <div class="recepcao-barra-fill recepcao-barra-ind" style="width:${pV}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EQUIPE CONCILIAÇÃO -->
+        <div class="equipe-card equipe-card-conc">
+            <div class="equipe-card-header">
+                <i class="fas fa-handshake"></i>
+                <span>EQUIPE CONCILIAÇÃO</span>
+            </div>
+            <div class="equipe-card-body">
+                <div class="equipe-numero">${c.total || 0}</div>
+                <div class="equipe-numero-label">clientes</div>
+                <div class="equipe-kpis">
+                    <div class="equipe-kpi">
+                        <span class="equipe-kpi-icon"><i class="fas fa-check-circle"></i></span>
+                        <span class="equipe-kpi-label">Com App</span>
+                        <span class="equipe-kpi-value">${c.sim || 0}</span>
+                    </div>
+                    <div class="equipe-kpi">
+                        <span class="equipe-kpi-icon"><i class="fas fa-times-circle"></i></span>
+                        <span class="equipe-kpi-label">Sem App</span>
+                        <span class="equipe-kpi-value">${c.nao || 0}</span>
+                    </div>
+                    <div class="equipe-kpi">
+                        <span class="equipe-kpi-icon"><i class="fas fa-ban"></i></span>
+                        <span class="equipe-kpi-label">Cancelados</span>
+                        <span class="equipe-kpi-value">${c.cancelado || 0}</span>
+                    </div>
+                </div>
+                <div class="recepcao-barra-wrap">
+                    <div class="recepcao-barra-label">
+                        <span>Adesão ao App</span>
+                        <span class="recepcao-barra-pct">${pC}%</span>
+                    </div>
+                    <div class="recepcao-barra-bg">
+                        <div class="recepcao-barra-fill recepcao-barra-dir" style="width:${pC}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
 function cardApp(t,icon,d,pct){ return `<div class="card card-app"><div class="card-header"><div class="card-title">${t}</div><div class="card-icon"><i class="${icon}"></i></div></div><div class="metric-grid">${metricItem('Total Clientes',d.total)}${metricItem('Com App (SIM)',d.sim,'var(--success)')}${metricItem('Sem App (NÃO)',d.nao,'var(--danger)')}${metricItem('Cancelados',d.cancelado||0,'var(--gray)')}${metricPercent('% Com App',pct)}</div></div>`; }
 
 // ============================================================================
@@ -893,56 +1228,33 @@ function renderRecorrenciaVendedorDashboard(d){
 }
 
 // ============================================================================
-// DASHBOARD: REFUTURIZA — CORRIGIDO COMPLETAMENTE
+// DASHBOARD: REFUTURIZA
 // ============================================================================
-
 function renderRefuturizaDashboard(d) {
-    console.log('📊 Dados recebidos para Refuturiza:', d);
-    
-    if (!d || !d.geral) {
-        showError('Dados do Refuturiza não encontrados');
-        return;
-    }
+    if (!d || !d.geral) { showError('Dados do Refuturiza não encontrados'); return; }
 
-    let consultoresList = d.consultores || [];
-    if (!Array.isArray(consultoresList)) {
-        consultoresList = [];
-    }
-    
-    console.log(`📊 ${consultoresList.length} consultores encontrados`);
-    console.log('📊 Primeiro consultor:', consultoresList[0]);
-    
+    let consultoresList = Array.isArray(d.consultores) ? d.consultores : [];
+
     const totalBruto = Number(d.geral.total) || 0;
     const cancelados = Number(d.geral.cancelado) || 0;
     const baseLiquida = totalBruto - cancelados;
     const pG = baseLiquida > 0 ? Math.round((Number(d.geral.comLigacao) / baseLiquida) * 100) : 0;
 
-    const consultoresComVendas = consultoresList.filter(c => {
-        const total = Number(c.total) || 0;
-        return total > 0;
-    });
-    
+    const consultoresComVendas = consultoresList.filter(c => (Number(c.total) || 0) > 0);
     let consultoresParaExibir = consultoresComVendas;
-    
     if (consultoresComVendas.length === 0 && totalBruto > 0) {
-        consultoresParaExibir = [{
-            nome: '📊 Total Geral',
-            total: totalBruto,
-            cancelado: cancelados,
-            comLigacao: Number(d.geral.comLigacao) || 0,
-            semLigacao: Number(d.geral.semLigacao) || 0
-        }];
+        consultoresParaExibir = [{ nome:'📊 Total Geral', total: totalBruto, cancelado: cancelados, comLigacao: Number(d.geral.comLigacao)||0, semLigacao: Number(d.geral.semLigacao)||0 }];
     }
-    
+
     const consultoresOrdenados = [...consultoresParaExibir].sort((a, b) => {
-        const baseA = (Number(a.total) || 0) - (Number(a.cancelado) || 0);
-        const baseB = (Number(b.total) || 0) - (Number(b.cancelado) || 0);
+        const baseA = (Number(a.total)||0) - (Number(a.cancelado)||0);
+        const baseB = (Number(b.total)||0) - (Number(b.cancelado)||0);
         return baseB - baseA;
     });
 
     dashboardContent.innerHTML = `
     <h2 class="dash-title"><i class="fas fa-book" style="color:var(--accent-dark)"></i> Dashboard Refuturiza — ${d.mes || 'Mês'} ${d.ano || ''}</h2>
-    
+
     <div class="card card-refut" style="max-width:500px;margin:0 auto 28px">
         <div class="card-header">
             <div class="card-title">Refuturiza — Total da Loja</div>
@@ -966,7 +1278,6 @@ function renderRefuturizaDashboard(d) {
             const cCancel = Number(c.cancelado) || 0;
             const cBase = cTotal - cCancel;
             const p = cBase > 0 ? Math.round(((Number(c.comLigacao) || 0) / cBase) * 100) : 0;
-            
             return `
             <div class="consultant-card">
                 <div class="consultant-header">
@@ -1010,42 +1321,26 @@ function renderRefuturizaDashboard(d) {
 // ============================================================================
 // DASHBOARD: VENDAS TIM
 // ============================================================================
-
 function renderVendasTimDashboard(d) {
-    if (!d || !d.geral) {
-        showError('Dados do Vendas TIM não encontrados');
-        return;
-    }
+    if (!d || !d.geral) { showError('Dados do Vendas TIM não encontrados'); return; }
 
     const { geral, vendedores, mes, ano, totalVendedores } = d;
-    
     const TIM_BLUE = '#0054a6';
-    const TIM_BLUE_LIGHT = 'rgba(0,84,166,0.08)';
-    const TIM_BLUE_FADE = 'rgba(0,84,166,0.12)';
     const TIM_BLUE_DARK = '#003d7a';
 
     const pAtivacao = geral.pctAtivacao || 0;
     const pPortabilidade = geral.pctPortabilidade || 0;
-
     const vendedoresOrdenados = (vendedores || []).sort((a, b) => b.total - a.total);
 
     dashboardContent.innerHTML = `
     <h2 class="dash-title" style="border-bottom-color:${TIM_BLUE};">
-        <i class="fas fa-sim-card" style="color:${TIM_BLUE};"></i> 
+        <i class="fas fa-sim-card" style="color:${TIM_BLUE};"></i>
         Dashboard Vendas TIM — ${mes || 'Mês'} ${ano || ''}
-        <span style="font-size:0.6rem;font-weight:400;color:var(--text-muted);margin-left:auto;background:${TIM_BLUE_FADE};padding:4px 12px;border-radius:20px;color:${TIM_BLUE};">
-            <i class="fas fa-check-circle"></i> ${totalVendedores || 0} vendedores
-        </span>
     </h2>
-
     <div class="card card-tim" style="max-width:480px;margin:0 auto 28px;border-top:4px solid ${TIM_BLUE};">
         <div class="card-header">
-            <div class="card-title" style="color:${TIM_BLUE};">
-                <i class="fas fa-chart-bar" style="color:${TIM_BLUE};"></i> Total Geral
-            </div>
-            <div class="card-icon" style="background:${TIM_BLUE_FADE};color:${TIM_BLUE};">
-                <i class="fas fa-sim-card"></i>
-            </div>
+            <div class="card-title" style="color:${TIM_BLUE};"><i class="fas fa-chart-bar"></i> Total Geral</div>
+            <div class="card-icon"><i class="fas fa-sim-card"></i></div>
         </div>
         <div class="metric-grid">
             ${metricItem('TOTAL VENDAS', geral.total, TIM_BLUE)}
@@ -1055,17 +1350,10 @@ function renderVendasTimDashboard(d) {
             ${metricPercentTim('% PORTABILIDADE', pPortabilidade)}
         </div>
     </div>
-
     ${vendedoresOrdenados.length > 0 ? `
-    <h3 class="section-title" style="border-bottom-color:${TIM_BLUE};">
-        <i class="fas fa-users" style="color:${TIM_BLUE};"></i> 
-        Vendedores (${vendedoresOrdenados.length})
-    </h3>
+    <h3 class="section-title"><i class="fas fa-users" style="color:${TIM_BLUE};"></i> Vendedores (${vendedoresOrdenados.length})</h3>
     <div class="consultant-grid">
-        ${vendedoresOrdenados.map(c => {
-            const pAtiv = c.pctAtivacao || 0;
-            const pPort = c.pctPortabilidade || 0;
-            return `
+        ${vendedoresOrdenados.map(c => `
             <div class="consultant-card" style="border-left-color:${TIM_BLUE};">
                 <div class="consultant-header">
                     <div class="consultant-name" style="color:${TIM_BLUE};">${c.nome}</div>
@@ -1075,35 +1363,24 @@ function renderVendasTimDashboard(d) {
                     ${metricItem('TOTAL', c.total, TIM_BLUE)}
                     ${metricItem('ATIVAÇÃO', c.ativacao, TIM_BLUE)}
                     ${metricItem('PORTABILIDADE', c.portabilidade, TIM_BLUE)}
-                    ${metricPercentTim('% ATIVAÇÃO', pAtiv)}
-                    ${metricPercentTim('% PORTABILIDADE', pPort)}
+                    ${metricPercentTim('% ATIVAÇÃO', c.pctAtivacao || 0)}
+                    ${metricPercentTim('% PORTABILIDADE', c.pctPortabilidade || 0)}
                 </div>
-            </div>`;
-        }).join('')}
+            </div>`).join('')}
     </div>
-
     <div class="card" style="margin-top:36px;background:linear-gradient(135deg,${TIM_BLUE},${TIM_BLUE_DARK});color:white;border:none;">
         <div class="card-header" style="border-bottom-color:rgba(255,255,255,0.2);">
             <div class="card-title" style="color:white;">📊 Resumo Final</div>
-            <div class="card-icon" style="background:rgba(255,255,255,0.2);color:white;">
-                <i class="fas fa-clipboard-list"></i>
-            </div>
+            <div class="card-icon" style="background:rgba(255,255,255,0.2);color:white;"><i class="fas fa-clipboard-list"></i></div>
         </div>
         <div class="metric-grid">
             ${metricItemWhite('Total Vendedores', vendedoresOrdenados.length)}
             ${metricItemWhite('Total Vendas', geral.total)}
             ${metricItemWhite('Média por Vendedor', vendedoresOrdenados.length > 0 ? Math.round(geral.total / vendedoresOrdenados.length) : 0)}
             ${metricItemWhite('Melhor Vendedor', vendedoresOrdenados.length > 0 ? vendedoresOrdenados[0].nome + ' (' + vendedoresOrdenados[0].total + ')' : 'N/A')}
-            ${metricItemWhite('Taxa Ativação', pAtivacao + '%')}
-            ${metricItemWhite('Taxa Portabilidade', pPortabilidade + '%')}
         </div>
     </div>
-    ` : `
-    <div style="text-align:center;padding:40px;color:var(--gray)">
-        <i class="fas fa-info-circle" style="font-size:2.5rem;margin-bottom:16px;display:block;color:${TIM_BLUE};"></i>
-        <h3>Nenhum vendedor com vendas para ${mes || 'Mês'} ${ano || ''}</h3>
-        <p style="font-size:0.9rem;margin-top:8px;">Total de vendas: ${geral.total}</p>
-    </div>`}`;
+    ` : `<div style="text-align:center;padding:40px;color:var(--gray)"><i class="fas fa-info-circle" style="font-size:2.5rem;margin-bottom:16px;display:block;color:${TIM_BLUE};"></i><h3>Nenhum vendedor com vendas para ${mes || 'Mês'} ${ano || ''}</h3></div>`}`;
 }
 
 function metricPercentTim(label, v) {
@@ -1123,22 +1400,18 @@ function calcPercent(n,d){ if(!d||d===0)return 0; return Math.round((n/d)*100); 
 function groupBySector(list) {
     const m = {};
     if (!list || list.length === 0) return m;
-    
     list.forEach(c => {
         const s = (c.setor || 'OUTROS').toUpperCase();
         if (!m[s]) m[s] = [];
         m[s].push(c);
     });
-    
     if (!m['OUTROS']) m['OUTROS'] = [];
-    
     return m;
 }
 
 function sortSectors(keys, order) {
     const uniqueKeys = [...new Set(keys)];
     const orderWithOutros = order.includes('OUTROS') ? order : [...order, 'OUTROS'];
-    
     return uniqueKeys.sort((a, b) => {
         const ia = orderWithOutros.indexOf(a);
         const ib = orderWithOutros.indexOf(b);
@@ -1186,15 +1459,8 @@ function hideSkeleton(){
     const sk = document.getElementById('skeletonLoader');
     if(sk) sk.remove();
     if(loadingEl) loadingEl.style.display='none';
-    const pl = document.getElementById('progressLoader');
-    if(pl) pl.remove();
 }
 
-function showProgressLoading(label='Carregando...', pct=0){ showSkeleton(); }
-function updateProgress(pct, label){
-    const msg = document.getElementById('skeletonMsg');
-    if(msg) msg.textContent = label;
-}
 function hideLoading(){ hideSkeleton(); }
 
 function showToast(msg){
@@ -1209,9 +1475,7 @@ function showError(msg, podeRetentar=true){
     const online = navigator.onLine;
     const iconeCor = online ? '#f59e0b' : '#ef4444';
     const icone    = online ? 'fa-exclamation-triangle' : 'fa-wifi';
-    const dica     = online
-        ? 'Os dados podem estar indisponíveis no momento.'
-        : 'Verifique sua conexão com a internet.';
+    const dica     = online ? 'Os dados podem estar indisponíveis no momento.' : 'Verifique sua conexão com a internet.';
 
     dashboardContent.innerHTML = `
     <div class="error-message">
@@ -1222,13 +1486,8 @@ function showError(msg, podeRetentar=true){
         <p style="color:var(--text-muted);margin-bottom:4px">${msg}</p>
         <p style="color:var(--text-muted);font-size:0.82rem;margin-bottom:20px">${dica}</p>
         <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-            ${podeRetentar ? `<button class="btn" onclick="loadDashboard()"
-                style="background:#ef4444;color:white;padding:10px 20px">
-                <i class="fas fa-redo"></i> Tentar novamente
-            </button>` : ''}
-            <button class="btn btn-topbar-refresh" onclick="currentDashboard='resumo';loadDashboard()">
-                <i class="fas fa-home"></i> Voltar ao início
-            </button>
+            ${podeRetentar ? `<button class="btn" onclick="loadDashboard()" style="background:#ef4444;color:white;padding:10px 20px"><i class="fas fa-redo"></i> Tentar novamente</button>` : ''}
+            <button class="btn btn-topbar-refresh" onclick="currentDashboard='resumo';loadDashboard()"><i class="fas fa-home"></i> Voltar ao início</button>
         </div>
     </div>`;
 }
@@ -1247,13 +1506,9 @@ function initPeriodModal(){
         <div class="period-modal-backdrop" id="periodModalBackdrop"></div>
         <div class="period-modal-sheet">
             <div class="period-modal-handle"></div>
-            <div class="period-modal-title">
-                <i class="fas fa-calendar-alt" style="color:var(--primary)"></i>
-                Selecionar Período
-            </div>
+            <div class="period-modal-title"><i class="fas fa-calendar-alt" style="color:var(--primary)"></i> Selecionar Período</div>
             <div class="period-modal-body">
-                <div class="select-group" style="width:100%">
-                    <label>Mês</label>
+                <div class="select-group" style="width:100%"><label>Mês</label>
                     <select id="monthSelectMobile">
                         <option value="1">Janeiro</option><option value="2">Fevereiro</option>
                         <option value="3">Março</option><option value="4">Abril</option>
@@ -1263,13 +1518,8 @@ function initPeriodModal(){
                         <option value="11">Novembro</option><option value="12">Dezembro</option>
                     </select>
                 </div>
-                <div class="select-group" style="width:100%">
-                    <label>Ano</label>
-                    <select id="yearSelectMobile"></select>
-                </div>
-                <button class="btn btn-topbar-refresh" id="applyPeriodBtn" style="width:100%;justify-content:center;padding:12px">
-                    <i class="fas fa-check"></i> Aplicar
-                </button>
+                <div class="select-group" style="width:100%"><label>Ano</label><select id="yearSelectMobile"></select></div>
+                <button class="btn btn-topbar-refresh" id="applyPeriodBtn" style="width:100%;justify-content:center;padding:12px"><i class="fas fa-check"></i> Aplicar</button>
             </div>
         </div>`;
     document.body.appendChild(modal);
@@ -1288,20 +1538,11 @@ function initPeriodModal(){
         if(mm) mm.value = currentMonth;
         if(ym) ym.value  = currentYear;
     }
-
-    function openModal(){
-        syncMobile();
-        modal.classList.add('open');
-        document.body.style.overflow = 'hidden';
-    }
-    function closeModal(){
-        modal.classList.remove('open');
-        document.body.style.overflow = '';
-    }
+    function openModal(){ syncMobile(); modal.classList.add('open'); document.body.style.overflow = 'hidden'; }
+    function closeModal(){ modal.classList.remove('open'); document.body.style.overflow = ''; }
 
     fab.addEventListener('click', openModal);
     document.getElementById('periodModalBackdrop').addEventListener('click', closeModal);
-
     document.getElementById('applyPeriodBtn').addEventListener('click', () => {
         const mm = document.getElementById('monthSelectMobile');
         const ym = document.getElementById('yearSelectMobile');
@@ -1317,7 +1558,6 @@ function initPeriodModal(){
         fab.style.display = SEM_FILTRO.includes(currentDashboard) ? 'none' : 'flex';
     }
     updateFabVisibility();
-
     window.updateFabVisibility = updateFabVisibility;
 }
 
@@ -1325,7 +1565,7 @@ function initPeriodModal(){
 async function exportPage(){
     const btn=document.getElementById('downloadBtn');
     const orig=btn.innerHTML;
-    btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Gerando imagem...';
+    btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Gerando...';
     btn.disabled=true;
     try{
         const container=document.querySelector('.main-wrapper');
@@ -1336,18 +1576,16 @@ async function exportPage(){
         link.download=`Dashboard_${nome}${periodo}.png`;
         link.href=canvas.toDataURL('image/png');
         link.click();
-    }catch(err){ showToast('❌ Erro ao gerar imagem. Tente novamente.'); }
+    }catch(err){ showToast('❌ Erro ao gerar imagem.'); }
     finally{ btn.innerHTML=orig; btn.disabled=false; }
 }
 function getMonthName(m){ return ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'][m-1]; }
 
 // ============================================================================
-// DASHBOARD: CAMPANHA 14° SALÁRIO
+// DASHBOARD: CAMPANHA 14°
 // ============================================================================
-
 function renderCampanha14Dashboard(d) {
     if (!d || !d.resumo || !d.colaboradores) { showError('Dados da Campanha 14° não encontrados'); return; }
-
     const { resumo, porSetor } = d;
     const MESES    = resumo.mesesCampanha || ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov"];
     const META     = resumo.metaMeses || 9;
@@ -1364,9 +1602,9 @@ function renderCampanha14Dashboard(d) {
 
     function mesesHtml(c) {
         return MESES.map((m, i) => {
-            const dest  = c.meses[i];
+            const dest = c.meses[i];
             const atual = i === mesAtual;
-            const fut   = i > mesAtual;
+            const fut = i > mesAtual;
             let bg, color, border, icon;
             if (dest)     { bg='#dcfce7'; color='#166534'; border='#16a34a'; icon='<i class="fas fa-check" style="font-size:9px"></i>'; }
             else if (fut) { bg='#f8fafc'; color='#94a3b8'; border='#e2e8f0'; icon=m; }
@@ -1379,55 +1617,26 @@ function renderCampanha14Dashboard(d) {
     function progressBar(c) {
         const pct = Math.min(100, Math.round((c.totalDestaques / META) * 100));
         const cor = c.status==='classificado' ? '#00a651' : c.status==='fora' ? '#ef4444' : '#f59e0b';
-        return `
-            <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
-                <div style="flex:1;height:6px;background:#e5e7eb;border-radius:3px">
-                    <div style="height:6px;border-radius:3px;background:${cor};width:${pct}%;transition:.4s"></div>
-                </div>
-                <span style="font-size:11px;color:var(--gray);white-space:nowrap;min-width:80px;text-align:right">${c.totalDestaques}/${META} meses • ${pct}%</span>
-            </div>`;
+        return `<div style="display:flex;align-items:center;gap:10px;margin-top:10px"><div style="flex:1;height:6px;background:#e5e7eb;border-radius:3px"><div style="height:6px;border-radius:3px;background:${cor};width:${pct}%;transition:.4s"></div></div><span style="font-size:11px;color:var(--gray);white-space:nowrap;min-width:80px;text-align:right">${c.totalDestaques}/${META} meses • ${pct}%</span></div>`;
     }
 
     function colabCard(c) {
-        return `
-            <div style="background:var(--light);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px">
-                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-                    <span style="font-weight:600;font-size:13px;color:var(--text);flex:1;line-height:1.3">${c.nome}</span>
-                    ${badgeStatus(c)}
-                </div>
-                <div style="display:flex;gap:5px;flex-wrap:wrap">${mesesHtml(c)}</div>
-                ${progressBar(c)}
-            </div>`;
+        return `<div style="background:var(--light);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:8px"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap"><span style="font-weight:600;font-size:13px;color:var(--text);flex:1;line-height:1.3">${c.nome}</span>${badgeStatus(c)}</div><div style="display:flex;gap:5px;flex-wrap:wrap">${mesesHtml(c)}</div>${progressBar(c)}</div>`;
     }
 
     let setorIdx = 0;
     const setorCards = Object.entries(porSetor).map(([setor, lista]) => {
-        const classif   = lista.filter(c => c.status==='classificado').length;
-        const comDest   = lista.filter(c => c.totalDestaques > 0);
-        const semDest   = lista.filter(c => c.totalDestaques === 0);
-        const sid       = 'setor_' + (setorIdx++);
+        const classif = lista.filter(c => c.status==='classificado').length;
+        const comDest = lista.filter(c => c.totalDestaques > 0);
+        const semDest = lista.filter(c => c.totalDestaques === 0);
+        const sid = 'setor_' + (setorIdx++);
 
-        const btnOcultos = semDest.length > 0 ? `
-            <button onclick="
-                var el=document.getElementById('${sid}');
-                var btn=this;
-                if(el.style.display==='none'){
-                    el.style.display='block';
-                    btn.innerHTML='<i class=\\'fas fa-eye-slash\\'></i> Ocultar sem destaque (${semDest.length})';
-                } else {
-                    el.style.display='none';
-                    btn.innerHTML='<i class=\\'fas fa-eye\\'></i> Ver sem destaque (${semDest.length})';
-                }
-            " style="background:none;border:1px dashed var(--border);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--gray);cursor:pointer;margin-top:4px;width:100%">
-                <i class='fas fa-eye'></i> Ver sem destaque (${semDest.length})
-            </button>` : '';
+        const btnOcultos = semDest.length > 0 ? `<button onclick="var el=document.getElementById('${sid}');var btn=this;if(el.style.display==='none'){el.style.display='block';btn.innerHTML='<i class=\\'fas fa-eye-slash\\'></i> Ocultar sem destaque (${semDest.length})';}else{el.style.display='none';btn.innerHTML='<i class=\\'fas fa-eye\\'></i> Ver sem destaque (${semDest.length})';}" style="background:none;border:1px dashed var(--border);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--gray);cursor:pointer;margin-top:4px;width:100%"><i class='fas fa-eye'></i> Ver sem destaque (${semDest.length})</button>` : '';
 
         return `
             <div class="card" style="margin-bottom:16px">
                 <div class="card-header" style="padding-bottom:12px;margin-bottom:12px">
-                    <div class="card-title" style="font-size:15px">
-                        <i class="fas fa-users" style="color:var(--primary)"></i> ${setor}
-                    </div>
+                    <div class="card-title" style="font-size:15px"><i class="fas fa-users" style="color:var(--primary)"></i> ${setor}</div>
                     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                         ${semDest.length > 0 ? `<span style="font-size:11px;color:var(--gray)">${semDest.length} sem destaque</span>` : ''}
                         <span style="font-size:12px;color:var(--success);font-weight:600">${classif}/${lista.length} classificados</span>
@@ -1435,20 +1644,14 @@ function renderCampanha14Dashboard(d) {
                 </div>
                 ${comDest.map(colabCard).join('')}
                 ${btnOcultos}
-                <div id="${sid}" style="display:none;margin-top:4px">
-                    ${semDest.map(colabCard).join('')}
-                </div>
+                <div id="${sid}" style="display:none;margin-top:4px">${semDest.map(colabCard).join('')}</div>
             </div>`;
     }).join('');
 
     dashboardContent.innerHTML = `
         <h2 class="dash-title"><i class="fas fa-trophy" style="color:#f59e0b"></i> Campanha 14° Salário — Jan a Nov 2026</h2>
         <div style="background:#fefce8;padding:10px 16px;border-radius:10px;margin-bottom:16px;border-left:4px solid #f59e0b">
-            <p style="margin:0;color:#854d0e;font-size:12px">
-                <i class="fas fa-info-circle"></i>
-                <strong>Meta:</strong> destaque em pelo menos <strong>${META} de 11 meses</strong> para garantir o 14° salário.
-                Marque os checkboxes na planilha Google e clique em <strong>Atualizar Dados</strong>.
-            </p>
+            <p style="margin:0;color:#854d0e;font-size:12px"><i class="fas fa-info-circle"></i> <strong>Meta:</strong> destaque em pelo menos <strong>${META} de 11 meses</strong> para garantir o 14° salário.</p>
         </div>
         <div class="main-cards" style="margin-bottom:20px">
             ${metricItem('Colaboradores', resumo.totalColabs)}
@@ -1460,31 +1663,20 @@ function renderCampanha14Dashboard(d) {
 }
 
 // ============================================================================
-// FUNÇÃO DE DIAGNÓSTICO - PARA USAR NO CONSOLE
+// PÓS-RENDER — Inicializar doughnuts que precisam de DOM pronto
 // ============================================================================
-
-function diagnosticarDadosRecebidos() {
-    console.log('📊 DADOS RECEBIDOS:');
-    console.log('Dashboard atual:', currentDashboard);
-    console.log('Dados:', window._dashboardData);
-    
-    if (window._dashboardData && window._dashboardData.consultores) {
-        const consultores = window._dashboardData.consultores;
-        console.log('Total consultores:', consultores.length);
-        
-        const setores = {};
-        consultores.forEach(c => {
-            const s = c.setor || 'OUTROS';
-            if (!setores[s]) setores[s] = [];
-            setores[s].push(c.nome);
+document.addEventListener('DOMContentLoaded', () => {
+    // Observa mudanças no dashboardContent pra rodar pós-render
+    if (typeof MutationObserver !== 'undefined') {
+        const observer = new MutationObserver(() => {
+            if (currentDashboard === 'documentacao' && window._dashboardData?.recepcao) {
+                renderRecepcaoDoughnut(window._dashboardData.recepcao);
+            }
         });
-        
-        console.log('Setores encontrados:');
-        Object.keys(setores).sort().forEach(s => {
-            console.log(`  ${s}: ${setores[s].length} consultores`);
-            console.log(`    ${setores[s].slice(0, 5).join(', ')}`);
-        });
-    } else {
-        console.log('⚠️ Nenhum dado disponível');
+        // Aguarda o dashboardContent existir
+        setTimeout(() => {
+            const el = document.getElementById('dashboardContent');
+            if (el) observer.observe(el, { childList: true });
+        }, 500);
     }
-}
+});
