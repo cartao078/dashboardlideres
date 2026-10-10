@@ -155,8 +155,9 @@ function rowToData(endpoint, row) {
     }
 
     if (endpoint === 'recorrencia') {
-        return typeof row.dados === 'string' ? JSON.parse(row.dados) : row.dados;
-    }
+    const d = typeof row.dados === 'string' ? JSON.parse(row.dados) : (row.dados || {});
+    return d;
+}
 
     if (endpoint === 'recorrencia_vendedor') {
         return {
@@ -1242,15 +1243,136 @@ function renderAdimplenciaDashboard(d){
 // DASHBOARD: RECORRÊNCIA
 // ============================================================================
 function renderRecorrenciaDashboard(d){
-    const {retencao,refiliacao,periodo}=d;
-    const retKeys=Object.keys(retencao),refKeys=Object.keys(refiliacao);
-    dashboardContent.innerHTML=`
+    const {retencao, refiliacao, periodo, geral3Meses} = d;
+    const retKeys = Object.keys(retencao);
+    const refKeys = Object.keys(refiliacao);
+
+    // ★ NOVO: Card geral 3 meses
+    const g3 = geral3Meses || {
+        totalRetido: 0, ok: 0, emAberto: 0, totalOK: 0, emAtraso: 0,
+        pendencias: 0, cancelado: 0, totalRetidosFinal: 0, percentualOK: 0
+    };
+    const pGeral = g3.percentualOK || 0;
+
+    dashboardContent.innerHTML = `
     <h2 class="dash-title"><i class="fas fa-redo" style="color:var(--warning)"></i> Dashboard Recorrência — ${periodo.atual}</h2>
-    <div style="background:rgba(245,158,11,0.08);padding:14px 18px;border-radius:12px;margin-bottom:24px;border-left:4px solid var(--warning);"><p style="margin:0;color:#92400e;font-weight:600;font-size:0.9rem;"><i class="fas fa-info-circle"></i> Período atual: ${periodo.atual} | Histórico: ${periodo.historico.join(', ')}</p></div>
-    <h3 class="section-title" style="border-bottom:2px solid var(--primary)"><i class="fas fa-crown" style="color:var(--primary)"></i> Retenção</h3>
-    <div class="consultant-grid" style="margin-bottom:36px">${retKeys.map(key=>{const c=retencao[key];const pA=calcPercent(c.atual.retençõesOK,c.atual.totalRetidosFinal),pT=calcPercent(c.total3Meses.totalOK||0,c.total3Meses.totalRetidosFinal);return `<div class="consultant-card"><div class="consultant-header"><div class="consultant-name">${key} (RETENÇÃO)</div><div class="consultant-sector sector-vendas">RETENÇÃO</div></div><h4 class="sub-section-title"><i class="far fa-calendar-check"></i> Mês Atual (${periodo.atual})</h4><div class="metric-grid">${metricItem('Total Retido',c.atual.totalRetido)}${metricItem('Cancelados',c.atual.cancelado,'var(--danger)')}${metricItem('Retenções OK',c.atual.retençõesOK,'var(--success)')}${metricItem('Pendências KYC',c.atual.pendenciasKYC,'var(--warning)')}${metricPercent('% OK',pA)}</div><h4 class="sub-section-title"><i class="fas fa-chart-line"></i> Total 3 Meses</h4><div class="metric-grid">${metricItem('Total Retido',c.total3Meses.totalRetido)}${metricItem('Cancelados',c.total3Meses.cancelado||0,'var(--danger)')}${metricItem('Total OK',c.total3Meses.totalOK||0,'var(--success)')}${metricItem('Em Atraso',c.total3Meses.emAtraso,'var(--warning)')}${metricPercent('% OK',pT)}</div></div>`;}).join('')}</div>
-    <h3 class="section-title" style="border-bottom:2px solid var(--warning)"><i class="fas fa-user-plus" style="color:var(--warning)"></i> Refiliação</h3>
-    <div class="consultant-grid">${refKeys.map(key=>{const c=refiliacao[key];const pT=calcPercent(c.total3Meses.totalOK||0,c.total3Meses.totalRetidosFinal);return `<div class="consultant-card"><div class="consultant-header"><div class="consultant-name">${key} (REFILIAÇÃO)</div><div class="consultant-sector sector-refiliacao">REFILIAÇÃO</div></div><h4 class="sub-section-title"><i class="fas fa-chart-line"></i> Total 3 Meses</h4><div class="metric-grid">${metricItem('Total Refiliados',c.total3Meses.totalRetido)}${metricItem('Cancelados',c.total3Meses.cancelado||0,'var(--danger)')}${metricItem('Total OK',c.total3Meses.totalOK||0,'var(--success)')}${metricItem('Em Atraso',c.total3Meses.emAtraso,'var(--warning)')}${metricPercent('% OK',pT)}</div></div>`;}).join('')}</div>`;
+
+    <div style="background:rgba(245,158,11,0.08);padding:14px 18px;border-radius:12px;margin-bottom:24px;border-left:4px solid var(--warning);">
+        <p style="margin:0;color:#92400e;font-weight:600;font-size:0.9rem;">
+            <i class="fas fa-info-circle"></i> Período atual: <strong>${periodo.atual}</strong> | Histórico: ${periodo.historico.join(', ')}
+        </p>
+    </div>
+
+    ${/* ★ NOVO CARD GERAL */''}
+    <h3 class="section-title" style="border-bottom:3px solid #0d9488;color:#0d9488">
+        <i class="fas fa-globe" style="color:#0d9488"></i> Recorrência Geral — Últimos 3 Meses (Refiliação + Retenção)
+    </h3>
+    <div class="recorrencia-geral-card">
+        <div class="recorrencia-geral-body">
+            <div class="recorrencia-geral-numero">
+                <div class="recorrencia-geral-value">${g3.totalOK || 0}</div>
+                <div class="recorrencia-geral-label">Total OK</div>
+            </div>
+            <div class="recorrencia-geral-kpis">
+                <div class="recorrencia-geral-kpi">
+                    <span class="recorrencia-geral-kpi-label">Total Retido</span>
+                    <span class="recorrencia-geral-kpi-value">${g3.totalRetido || 0}</span>
+                </div>
+                <div class="recorrencia-geral-kpi">
+                    <span class="recorrencia-geral-kpi-label">Cancelados</span>
+                    <span class="recorrencia-geral-kpi-value recorrencia-danger">${g3.cancelado || 0}</span>
+                </div>
+                <div class="recorrencia-geral-kpi">
+                    <span class="recorrencia-geral-kpi-label">Total Retidos Final</span>
+                    <span class="recorrencia-geral-kpi-value">${g3.totalRetidosFinal || 0}</span>
+                </div>
+                <div class="recorrencia-geral-kpi">
+                    <span class="recorrencia-geral-kpi-label">OK</span>
+                    <span class="recorrencia-geral-kpi-value recorrencia-success">${g3.ok || 0}</span>
+                </div>
+                <div class="recorrencia-geral-kpi">
+                    <span class="recorrencia-geral-kpi-label">Em Aberto</span>
+                    <span class="recorrencia-geral-kpi-value recorrencia-warning">${g3.emAberto || 0}</span>
+                </div>
+                <div class="recorrencia-geral-kpi">
+                    <span class="recorrencia-geral-kpi-label">Em Atraso</span>
+                    <span class="recorrencia-geral-kpi-value recorrencia-danger">${g3.emAtraso || 0}</span>
+                </div>
+                <div class="recorrencia-geral-kpi">
+                    <span class="recorrencia-geral-kpi-label">Pendências</span>
+                    <span class="recorrencia-geral-kpi-value recorrencia-danger">${g3.pendencias || 0}</span>
+                </div>
+            </div>
+            <div class="recorrencia-geral-barra">
+                <div class="recorrencia-geral-barra-label">
+                    <span>% OK</span>
+                    <span class="recorrencia-geral-barra-pct">${pGeral}%</span>
+                </div>
+                <div class="recorrencia-geral-barra-bg">
+                    <div class="recorrencia-geral-barra-fill" style="width:${pGeral}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h3 class="section-title" style="border-bottom:2px solid var(--primary)">
+        <i class="fas fa-crown" style="color:var(--primary)"></i> Retenção
+    </h3>
+    <div class="consultant-grid" style="margin-bottom:36px">
+        ${retKeys.map(key => {
+            const c = retencao[key];
+            const pA = calcPercent(c.atual.retençõesOK, c.atual.totalRetidosFinal);
+            const pT = calcPercent(c.total3Meses.totalOK || 0, c.total3Meses.totalRetidosFinal);
+            return `
+            <div class="consultant-card">
+                <div class="consultant-header">
+                    <div class="consultant-name">${key} (RETENÇÃO)</div>
+                    <div class="consultant-sector sector-vendas">RETENÇÃO</div>
+                </div>
+                <h4 class="sub-section-title"><i class="far fa-calendar-check"></i> Mês Atual (${periodo.atual})</h4>
+                <div class="metric-grid">
+                    ${metricItem('Total Retido', c.atual.totalRetido)}
+                    ${metricItem('Cancelados', c.atual.cancelado, 'var(--danger)')}
+                    ${metricItem('Retenções OK', c.atual.retençõesOK, 'var(--success)')}
+                    ${metricItem('Pendências KYC', c.atual.pendenciasKYC, 'var(--warning)')}
+                    ${metricPercent('% OK', pA)}
+                </div>
+                <h4 class="sub-section-title"><i class="fas fa-chart-line"></i> Total 3 Meses</h4>
+                <div class="metric-grid">
+                    ${metricItem('Total Retido', c.total3Meses.totalRetido)}
+                    ${metricItem('Cancelados', c.total3Meses.cancelado || 0, 'var(--danger)')}
+                    ${metricItem('Total OK', c.total3Meses.totalOK || 0, 'var(--success)')}
+                    ${metricItem('Em Atraso', c.total3Meses.emAtraso, 'var(--warning)')}
+                    ${metricPercent('% OK', pT)}
+                </div>
+            </div>`;
+        }).join('')}
+    </div>
+
+    <h3 class="section-title" style="border-bottom:2px solid var(--warning)">
+        <i class="fas fa-user-plus" style="color:var(--warning)"></i> Refiliação
+    </h3>
+    <div class="consultant-grid">
+        ${refKeys.map(key => {
+            const c = refiliacao[key];
+            const pT = calcPercent(c.total3Meses.totalOK || 0, c.total3Meses.totalRetidosFinal);
+            return `
+            <div class="consultant-card">
+                <div class="consultant-header">
+                    <div class="consultant-name">${key} (REFILIAÇÃO)</div>
+                    <div class="consultant-sector sector-refiliacao">REFILIAÇÃO</div>
+                </div>
+                <h4 class="sub-section-title"><i class="fas fa-chart-line"></i> Total 3 Meses</h4>
+                <div class="metric-grid">
+                    ${metricItem('Total Refiliados', c.total3Meses.totalRetido)}
+                    ${metricItem('Cancelados', c.total3Meses.cancelado || 0, 'var(--danger)')}
+                    ${metricItem('Total OK', c.total3Meses.totalOK || 0, 'var(--success)')}
+                    ${metricItem('Em Atraso', c.total3Meses.emAtraso, 'var(--warning)')}
+                    ${metricPercent('% OK', pT)}
+                </div>
+            </div>`;
+        }).join('')}
+    </div>`;
 }
 
 // ============================================================================
