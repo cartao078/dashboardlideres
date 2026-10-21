@@ -351,7 +351,7 @@ document.addEventListener('DOMContentLoaded', function(){
             if(topbarTitle) topbarTitle.textContent = TITLES[currentDashboard] || currentDashboard;
 
             if(periodSelector){
-                periodSelector.style.display = SEM_FILTRO.includes(currentDashboard) ? 'none' : 'flex';
+                periodSelector.classList.toggle('no-filter', SEM_FILTRO.includes(currentDashboard));
             }
 
             if (currentDashboard === 'vendas_tim') {
@@ -561,7 +561,7 @@ function renderResumoDashboard(vendas, app, adim){
         <div class="chart-card"><div class="chart-card-title"><i class="fas fa-chart-pie"></i> Status das Vendas</div><div class="chart-card-subtitle">Distribuição geral: aprovados, pendências, não enviado e expirado</div><div class="chart-wrap"><canvas id="chRes2"></canvas></div></div>
         ${app ? `<div class="chart-card"><div class="chart-card-title"><i class="fas fa-mobile-alt"></i> Adesão ao App por Setor</div><div class="chart-card-subtitle">Clientes com e sem app cadastrado, separado por setor</div><div class="chart-wrap"><canvas id="chRes3"></canvas></div></div>` : ''}
     </div>
-    <div class="charts-row" style="grid-template-columns:${adim?'1fr 1fr':'1fr'}">
+    <div class="charts-row ${adim?'charts-row-2':'charts-row-1'}">
         ${adim ? `<div class="chart-card"><div class="chart-card-title"><i class="fas fa-credit-card"></i> Situação das Mensalidades</div><div class="chart-card-subtitle">Mensalidades em dia, em aberto e em atraso</div><div class="chart-wrap"><canvas id="chRes4"></canvas></div></div>` : ''}
         <div class="chart-card"><div class="chart-card-title"><i class="fas fa-store"></i> Loja vs Web/Tele</div><div class="chart-card-subtitle">Comparativo de total, aprovados e pendências entre os canais de venda</div><div class="chart-wrap"><canvas id="chRes5"></canvas></div></div>
     </div>
@@ -1719,7 +1719,7 @@ function initPeriodModal(){
     });
 
     function updateFabVisibility(){
-        fab.style.display = SEM_FILTRO.includes(currentDashboard) ? 'none' : 'flex';
+        fab.classList.toggle('fab-hidden', SEM_FILTRO.includes(currentDashboard));
     }
     updateFabVisibility();
     window.updateFabVisibility = updateFabVisibility;
