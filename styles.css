@@ -909,6 +909,14 @@ body {
     opacity: 0;
 }
 
+/* Logo da TIM: JPEG com fundo azul opaco. O filtro branco da logo padrão
+   (brightness(0) invert(1)) pintava o retângulo inteiro de branco. */
+.sidebar-logo-img.logo-tim {
+    filter: none;
+    opacity: 1;
+    border-radius: 6px;
+}
+
 .sidebar-logo-icon {
     display: none;
     color: #7ed321;
