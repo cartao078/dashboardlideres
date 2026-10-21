@@ -459,6 +459,10 @@ body {
     margin-bottom: 24px;
 }
 
+/* Variações do número de colunas (antes eram inline e bloqueavam o @media) */
+.charts-row-2 { grid-template-columns: 1fr 1fr; }
+.charts-row-1 { grid-template-columns: 1fr; }
+
 .chart-card {
     background: white;
     border-radius: 14px;
@@ -1170,6 +1174,9 @@ body {
     justify-content: center;
 }
 
+/* Dashboards sem filtro de período (controlado por classe, não por style inline) */
+.topbar-center.no-filter { display: none; }
+
 .topbar-right {
     display: flex;
     align-items: center;
@@ -1334,6 +1341,9 @@ select:focus {
     transform: scale(1.08);
     box-shadow: 0 6px 24px rgba(0,166,81,0.5);
 }
+
+/* Dashboards sem filtro de período: esconde o botão em qualquer tela */
+#periodFab.fab-hidden { display: none !important; }
 
 /* ============================================================================
    MODAL DE PERÍODO — bottom sheet mobile
@@ -1762,6 +1772,7 @@ select:focus {
     .topbar-update { display: none; }
     .dashboard-content { padding: 20px 16px; }
     .charts-row { grid-template-columns: 1fr 1fr; }
+    .charts-row.charts-row-1 { grid-template-columns: 1fr; }
     .ranking-setores { grid-template-columns: 1fr; }
     .rank-grid { grid-template-columns: 1fr; }
     #periodFab { display: flex; }
