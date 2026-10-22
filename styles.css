@@ -1120,6 +1120,7 @@ body {
 .main-wrapper {
     margin-left: var(--sidebar-w);
     flex: 1;
+    min-width: 0; /* sem isso o item flex não encolhe e a página ganha rolagem horizontal no celular */
     display: flex;
     flex-direction: column;
     min-height: 100vh;
