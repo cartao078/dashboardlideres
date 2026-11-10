@@ -1,5 +1,5 @@
 // ============================================================================
-// DASHBOARD V22.0 - app.js — COM RECEPÇÃO + EQUIPES
+// DASHBOARD V22.0 - app.js — COM RECEPÇÃO + EQUIPES (PARTE 1/3)
 // ============================================================================
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbxY4lTmtAnQHGo_XuWDgbUOwsa2V6PWHVvWgtu1--2tWjux6u6kOzom0eS7L6ir-60Qsg/exec';
@@ -71,6 +71,9 @@ async function fetchSupabase(endpoint, mes, ano) {
             url = `${SUPABASE_URL}/rest/v1/app_dashboard?mes=eq.${mes}&ano=eq.${ano}&select=*`;
         } else if (endpoint === 'vendas_tim') {
             url = `${SUPABASE_URL}/rest/v1/vendas_tim?mes=eq.${mes}&ano=eq.${ano}&select=*`;
+        } else if (endpoint === 'recorrencia') {
+            // ★ NOVO: Busca a nova tabela de qualidade
+            url = `${SUPABASE_URL}/rest/v1/qualidade_retencao?mes=eq.${mes}&ano=eq.${ano}&select=*`;
         } else {
             url = `${SUPABASE_URL}/rest/v1/${endpoint}?mes=eq.${mes}&ano=eq.${ano}&select=*`;
         }
@@ -121,7 +124,6 @@ function rowToData(endpoint, row) {
                 promo:  {total:0,cancelados:0,aprovados:0},
                 normal: {total:0,cancelados:0,aprovados:0}
             },
-            // ★ NOVO: Recepção
             temRecepcao: row.tem_recepcao || false,
             recepcao: {
                 indicacao: parseJ(row.recepcao_indicacao) || totVazio,
@@ -138,7 +140,6 @@ function rowToData(endpoint, row) {
             geral:   { total: row.geral_total, sim: row.geral_sim, nao: row.geral_nao, cancelado: row.geral_cancelado, outros: row.geral_outros },
             appLoja: { total: row.loja_total, sim: row.loja_sim, nao: row.loja_nao, cancelado: row.loja_cancelado, outros: row.loja_outros },
             appWeb:  { total: row.web_total, sim: row.web_sim, nao: row.web_nao, cancelado: row.web_cancelado, outros: row.web_outros },
-            // ★ NOVO: Equipes
             equipeVendas:      parseJ(row.equipe_vendas)      || {total:0,sim:0,nao:0,cancelado:0,outros:0},
             equipeConciliacao: parseJ(row.equipe_conciliacao) || {total:0,sim:0,nao:0,cancelado:0,outros:0},
             consultores: typeof row.consultores === 'string' ? JSON.parse(row.consultores) : (row.consultores || []),
@@ -155,9 +156,9 @@ function rowToData(endpoint, row) {
     }
 
     if (endpoint === 'recorrencia') {
-    const d = typeof row.dados === 'string' ? JSON.parse(row.dados) : (row.dados || {});
-    return d;
-}
+        // ★ NOVO: Lê o JSON completo da tabela qualidade_retencao
+        return typeof row.dados === 'string' ? JSON.parse(row.dados) : (row.dados || null);
+    }
 
     if (endpoint === 'recorrencia_vendedor') {
         return {
@@ -306,6 +307,9 @@ const chartInstances = {};
 
 let dashboardBtns, monthSelect, yearSelect, dashboardContent,
     refreshBtn, downloadBtn, loadingEl, lastUpdateEl, periodSelector;
+// ============================================================================
+// PARTE 2/3 - INICIALIZAÇÃO E RESUMO
+// ============================================================================
 
 // ── Init ───────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', function(){
@@ -600,6 +604,9 @@ function buildRankingCompleto(consultores, mes, ano){
         <div class="ranking-setores">${RANKING_SETORES.map(setor => { const lista=porSetor[setor]; if(!lista||!lista.length)return ''; return `<div class="ranking-setor-col"><div class="ranking-setor-header ${getSectorClass(setor)}"><i class="${getSectorIcon(setor)}"></i> ${setor}</div>${lista.slice(0,5).map((c,i) => { const pct=calcPercent(c.aprovados,c.total); return `<div class="rank-setor-row"><div class="rank-pos ${posClass(i)}" style="width:24px;height:24px;font-size:0.7rem">${medal(i)}</div><div class="rank-name" style="font-size:0.83rem">${c.nome}</div><div class="rank-pct ${getPercentClass(pct)}" style="font-size:0.78rem">${pct}%</div><div class="rank-total" style="font-size:0.75rem">${c.total}vd</div></div>`; }).join('')}</div>`; }).join('')}</div>
     </div>`;
 }
+// ============================================================================
+// PARTE 3/3 - DEMAIS DASHBOARDS E HELPERS
+// ============================================================================
 
 // ============================================================================
 // DASHBOARD: VENDAS / DOCUMENTAÇÃO  — V22 COM RECEPÇÃO
@@ -646,72 +653,67 @@ function renderDocumentacaoDashboard(d) {
     ${sectors.map(sector => {
         const list = bySector[sector] || [];
 
-        // ─── TELEVENDAS: card único consolidado (mesmo visual dos outros) ─
-if (sector === 'TELEVENDAS' && list.length > 0) {
-    // Soma todos os consultores de televendas
-    const cons = {
-        nome: '📺 TELEVENDAS — Consolidado',
-        total: 0, cancelados: 0, aprovados: 0, pendencias: 0,
-        naoEnviado: 0, expirado: 0, pendente: 0, reprovados: 0,
-        promo:  { total:0, cancelados:0, aprovados:0 },
-        normal: { total:0, cancelados:0, aprovados:0 }
-    };
-    list.forEach(c => {
-        cons.total        += c.total        || 0;
-        cons.cancelados   += c.cancelados   || 0;
-        cons.aprovados    += c.aprovados    || 0;
-        cons.pendencias   += c.pendencias   || 0;
-        cons.naoEnviado   += c.naoEnviado   || 0;
-        cons.expirado     += c.expirado     || 0;
-        cons.pendente     += c.pendente     || 0;
-        cons.reprovados   += c.reprovados   || 0;
-        if (c.promo) {
-            cons.promo.total      += c.promo.total      || 0;
-            cons.promo.cancelados += c.promo.cancelados || 0;
-            cons.promo.aprovados  += c.promo.aprovados  || 0;
-        }
-        if (c.normal) {
-            cons.normal.total      += c.normal.total      || 0;
-            cons.normal.cancelados += c.normal.cancelados || 0;
-            cons.normal.aprovados  += c.normal.aprovados  || 0;
-        }
-    });
+        if (sector === 'TELEVENDAS' && list.length > 0) {
+            const cons = {
+                nome: '📺 TELEVENDAS — Consolidado',
+                total: 0, cancelados: 0, aprovados: 0, pendencias: 0,
+                naoEnviado: 0, expirado: 0, pendente: 0, reprovados: 0,
+                promo:  { total:0, cancelados:0, aprovados:0 },
+                normal: { total:0, cancelados:0, aprovados:0 }
+            };
+            list.forEach(c => {
+                cons.total        += c.total        || 0;
+                cons.cancelados   += c.cancelados   || 0;
+                cons.aprovados    += c.aprovados    || 0;
+                cons.pendencias   += c.pendencias   || 0;
+                cons.naoEnviado   += c.naoEnviado   || 0;
+                cons.expirado     += c.expirado     || 0;
+                cons.pendente     += c.pendente     || 0;
+                cons.reprovados   += c.reprovados   || 0;
+                if (c.promo) {
+                    cons.promo.total      += c.promo.total      || 0;
+                    cons.promo.cancelados += c.promo.cancelados || 0;
+                    cons.promo.aprovados  += c.promo.aprovados  || 0;
+                }
+                if (c.normal) {
+                    cons.normal.total      += c.normal.total      || 0;
+                    cons.normal.cancelados += c.normal.cancelados || 0;
+                    cons.normal.aprovados  += c.normal.aprovados  || 0;
+                }
+            });
 
-    const pct   = calcPercentDoc(cons.aprovados, cons.total, cons.cancelados);
-    const tot   = cons.total;
-    const canc  = cons.cancelados;
-    const aprov = cons.aprovados;
+            const pct   = calcPercentDoc(cons.aprovados, cons.total, cons.cancelados);
 
-    return `
-    <div class="sector-card">
-        <div class="sector-header">
-            <div class="sector-title">
-                <i class="${getSectorIcon(sector)}"></i> ${sector}
-                <span class="sector-count">${list.length} origem${list.length!==1?'s':''} consolidada${list.length!==1?'s':''}</span>
-            </div>
-            <div class="metric-percent ${getPercentClass(pct)}">${pct}% aprovados</div>
-        </div>
-        <div class="consultant-grid">
-            <div class="consultant-card">
-                <div class="consultant-header">
-                    <div class="consultant-name">📺 TELEVENDAS — Consolidado</div>
-                    <div class="consultant-sector ${getSectorClass(sector)}">${sector}</div>
+            return `
+            <div class="sector-card">
+                <div class="sector-header">
+                    <div class="sector-title">
+                        <i class="${getSectorIcon(sector)}"></i> ${sector}
+                        <span class="sector-count">${list.length} origem${list.length!==1?'s':''} consolidada${list.length!==1?'s':''}</span>
+                    </div>
+                    <div class="metric-percent ${getPercentClass(pct)}">${pct}% aprovados</div>
                 </div>
-                <div class="metric-grid">
-                    ${metricItem('Total',        cons.total || 0)}
-                    ${metricItem('Cancelados',   cons.cancelados || 0, '#991b1b')}
-                    ${metricItem('Base líquida', (cons.total || 0) - (cons.cancelados || 0))}
-                    ${metricItem('Aprovados',    cons.aprovados || 0, 'var(--success)')}
-                    ${metricItem('Pendências',   cons.pendencias || 0, 'var(--danger)')}
-                    ${metricItem('Não Enviado',  cons.naoEnviado || 0, 'var(--warning)')}
-                    ${metricItem('Expirado',     cons.expirado || 0, 'var(--gray)')}
-                    ${metricPercent('% Aprovados', pct)}
+                <div class="consultant-grid">
+                    <div class="consultant-card">
+                        <div class="consultant-header">
+                            <div class="consultant-name">📺 TELEVENDAS — Consolidado</div>
+                            <div class="consultant-sector ${getSectorClass(sector)}">${sector}</div>
+                        </div>
+                        <div class="metric-grid">
+                            ${metricItem('Total',        cons.total || 0)}
+                            ${metricItem('Cancelados',   cons.cancelados || 0, '#991b1b')}
+                            ${metricItem('Base líquida', (cons.total || 0) - (cons.cancelados || 0))}
+                            ${metricItem('Aprovados',    cons.aprovados || 0, 'var(--success)')}
+                            ${metricItem('Pendências',   cons.pendencias || 0, 'var(--danger)')}
+                            ${metricItem('Não Enviado',  cons.naoEnviado || 0, 'var(--warning)')}
+                            ${metricItem('Expirado',     cons.expirado || 0, 'var(--gray)')}
+                            ${metricPercent('% Aprovados', pct)}
+                        </div>
+                        ${temColunasPromo ? promoMiniCards(cons) : ''}
+                    </div>
                 </div>
-                ${temColunasPromo ? promoMiniCards(cons) : ''}
-            </div>
-        </div>
-    </div>`;
-}
+            </div>`;
+        }
 
         if (list.length === 0) {
             return `
@@ -748,7 +750,6 @@ if (sector === 'TELEVENDAS' && list.length > 0) {
                     const p = calcPercentDoc(c.aprovados, c.total, c.cancelados||0);
                     const isRecepcao = (c.setor||'').toUpperCase() === 'RECEPCAO';
 
-                    // Badge de indicação/direta no header do consultor da recepção
                     let badgeRecepcao = '';
                     if (isRecepcao && c.recepcao) {
                         const indT = c.recepcao.indicacao?.total || 0;
@@ -784,7 +785,6 @@ if (sector === 'TELEVENDAS' && list.length > 0) {
     }).join('')}`;
 }
 
-// ★ NOVO: Bloco visual da Recepção
 function renderRecepcaoBlocoHTML(rec) {
     if (!rec) return '';
     const ind = rec.indicacao || {};
@@ -797,7 +797,6 @@ function renderRecepcaoBlocoHTML(rec) {
     const pDir = calcPercentDoc(dir.aprovados || 0, dir.total || 0, dir.cancelados || 0);
     const pTot = calcPercentDoc(tot.aprovados || 0, tot.total || 0, tot.cancelados || 0);
 
-    // Percentuais de divisão pra doughnut
     const pctInd = totalInd > 0 ? Math.round((ind.total / totalInd) * 100) : 0;
     const pctDir = totalInd > 0 ? 100 - pctInd : 0;
 
@@ -807,7 +806,6 @@ function renderRecepcaoBlocoHTML(rec) {
     </h3>
 
     <div class="recepcao-grid">
-        <!-- CARD INDICAÇÃO -->
         <div class="recepcao-card recepcao-card-ind">
             <div class="recepcao-card-header">
                 <i class="fas fa-crown"></i>
@@ -845,7 +843,6 @@ function renderRecepcaoBlocoHTML(rec) {
             </div>
         </div>
 
-        <!-- CARD VENDA DIRETA -->
         <div class="recepcao-card recepcao-card-dir">
             <div class="recepcao-card-header">
                 <i class="fas fa-bullseye"></i>
@@ -883,7 +880,6 @@ function renderRecepcaoBlocoHTML(rec) {
             </div>
         </div>
 
-        <!-- CARD TOTAL + DOUGHNUT -->
         <div class="recepcao-card recepcao-card-tot">
             <div class="recepcao-card-header">
                 <i class="fas fa-chart-pie"></i>
@@ -921,7 +917,6 @@ function renderRecepcaoBlocoHTML(rec) {
     </div>`;
 }
 
-// Depois de render, criar o doughnut
 function renderRecepcaoDoughnut(rec) {
     if (!rec || !document.getElementById('recDoughnut')) return;
     const ind = rec.indicacao?.total || 0;
@@ -1133,7 +1128,6 @@ function renderAppDashboard(d){
     }).join('')}`;
 }
 
-// ★ NOVO: Bloco das Equipes
 function renderEquipesHTML(eqVendas, eqConc) {
     if (!eqVendas && !eqConc) return '';
     const v = eqVendas || {total:0,sim:0,nao:0,cancelado:0,outros:0};
@@ -1147,7 +1141,6 @@ function renderEquipesHTML(eqVendas, eqConc) {
     </h3>
 
     <div class="equipe-grid">
-        <!-- EQUIPE VENDAS -->
         <div class="equipe-card equipe-card-vendas">
             <div class="equipe-card-header">
                 <i class="fas fa-trophy"></i>
@@ -1185,7 +1178,6 @@ function renderEquipesHTML(eqVendas, eqConc) {
             </div>
         </div>
 
-        <!-- EQUIPE CONCILIAÇÃO -->
         <div class="equipe-card equipe-card-conc">
             <div class="equipe-card-header">
                 <i class="fas fa-handshake"></i>
@@ -1240,24 +1232,17 @@ function renderAdimplenciaDashboard(d){
 }
 
 // ============================================================================
-// DASHBOARD: RECORRÊNCIA
-// ============================================================================
-// ============================================================================
 // DASHBOARD: RECORRÊNCIA (QUALIDADE DA RETENÇÃO)
 // ============================================================================
 function renderRecorrenciaDashboard(d){
-    // Verifica se os dados vieram no formato novo
     if (!d || !d.geral || !d.consultores) {
         showError('Dados de Qualidade da Retenção não encontrados.');
         return;
     }
 
     const { geral, consultores, periodo } = d;
-    
-    // Ordena os consultores alfabeticamente
     const nomes = Object.keys(consultores).sort();
 
-    // Função auxiliar para renderizar os cards individuais
     function cardConsultor(nome) {
         const c = consultores[nome];
         const p = c.percentualOK || 0;
@@ -1321,6 +1306,7 @@ function renderRecorrenciaDashboard(d){
     </div>`}
     `;
 }
+
 // ============================================================================
 // DASHBOARD: REC. VENDEDOR
 // ============================================================================
@@ -1776,14 +1762,12 @@ function renderCampanha14Dashboard(d) {
 // PÓS-RENDER — Inicializar doughnuts que precisam de DOM pronto
 // ============================================================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Observa mudanças no dashboardContent pra rodar pós-render
     if (typeof MutationObserver !== 'undefined') {
         const observer = new MutationObserver(() => {
             if (currentDashboard === 'documentacao' && window._dashboardData?.recepcao) {
                 renderRecepcaoDoughnut(window._dashboardData.recepcao);
             }
         });
-        // Aguarda o dashboardContent existir
         setTimeout(() => {
             const el = document.getElementById('dashboardContent');
             if (el) observer.observe(el, { childList: true });
