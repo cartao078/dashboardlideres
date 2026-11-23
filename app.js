@@ -15,7 +15,7 @@ const C = {
 };
 
 const RANKING_SETORES = ['VENDAS','RECEPCAO','REFILIACAO'];
-const SEM_FILTRO      = ['recorrencia','recorrencia_vendedor','campanha14'];
+const SEM_FILTRO      = ['recorrencia_vendedor','campanha14'];
 
 // ── Cache ──────────────────────────────────────────────────────────────────
 const CACHE_MEM  = new Map();
@@ -783,6 +783,9 @@ function renderDocumentacaoDashboard(d) {
             </div>
         </div>`;
     }).join('')}`;
+
+    // Doughnut da Recepção: o canvas acabou de ser injetado no DOM acima
+    if (temRecepcao) renderRecepcaoDoughnut(recepcao);
 }
 
 function renderRecepcaoBlocoHTML(rec) {
@@ -1667,7 +1670,7 @@ async function exportPage(){
         const container=document.querySelector('.main-wrapper');
         const canvas=await html2canvas(container,{scale:2,useCORS:true,backgroundColor:'#ffffff',scrollX:0,scrollY:-window.scrollY,windowWidth:container.scrollWidth,windowHeight:container.scrollHeight,onclone:(doc)=>{doc.querySelector('.dashboard-content').style.overflow='visible';}});
         const nome=currentDashboard.toUpperCase().replace('_','-');
-        const periodo=['recorrencia','recorrencia_vendedor'].includes(currentDashboard)?'':`_${getMonthName(currentMonth)}-${currentYear}`;
+        const periodo=['recorrencia_vendedor'].includes(currentDashboard)?'':`_${getMonthName(currentMonth)}-${currentYear}`;
         const link=document.createElement('a');
         link.download=`Dashboard_${nome}${periodo}.png`;
         link.href=canvas.toDataURL('image/png');
@@ -1757,20 +1760,3 @@ function renderCampanha14Dashboard(d) {
         </div>
         ${setorCards}`;
 }
-
-// ============================================================================
-// PÓS-RENDER — Inicializar doughnuts que precisam de DOM pronto
-// ============================================================================
-document.addEventListener('DOMContentLoaded', () => {
-    if (typeof MutationObserver !== 'undefined') {
-        const observer = new MutationObserver(() => {
-            if (currentDashboard === 'documentacao' && window._dashboardData?.recepcao) {
-                renderRecepcaoDoughnut(window._dashboardData.recepcao);
-            }
-        });
-        setTimeout(() => {
-            const el = document.getElementById('dashboardContent');
-            if (el) observer.observe(el, { childList: true });
-        }, 500);
-    }
-});
