@@ -14,6 +14,12 @@ const C = {
     danger:'#ef4444',gray:'#6b8072', border:'#d1e8d9',
 };
 
+// ── Autenticação / Unidade (multi-franquia) ────────────────────────────────
+// Apps Script (API_URL) só serve a unidade padrão; as demais usam apenas Supabase.
+const UNIDADE_PADRAO_ID = 'cdt-ceilandia';
+const COR_PRIMARIA_PADRAO = '#00a651';
+const AUTH = { client: null, session: null, unidade: null, entrando: false, periodModalOk: false };
+
 const RANKING_SETORES = ['VENDAS','RECEPCAO','REFILIACAO'];
 const SEM_FILTRO      = ['recorrencia_vendedor','campanha14'];
 
@@ -22,7 +28,11 @@ const CACHE_MEM  = new Map();
 const CACHE_TTL  = 30 * 60 * 1000;
 const LS_PREFIX  = 'cdt_dash_';
 
-function cacheKey(ep,m,y){ return SEM_FILTRO.includes(ep)?ep:`${ep}:${m}:${y}`; }
+// A chave inclui a unidade: cache (e localStorage) nunca é compartilhado entre franquias/usuários.
+function cacheKey(ep,m,y){
+    const u = AUTH.unidade ? AUTH.unidade.id : '-';
+    return SEM_FILTRO.includes(ep) ? `${u}|${ep}` : `${u}|${ep}:${m}:${y}`;
+}
 
 function getCached(k){
     const mem = CACHE_MEM.get(k);
@@ -56,26 +66,41 @@ function invalidateCache(k){
 // CAMADA DE DADOS — Supabase primeiro, fallback Apps Script
 // ============================================================================
 
+async function getAccessToken() {
+    try {
+        if (AUTH.client) {
+            const { data } = await AUTH.client.auth.getSession();   // renova o token se preciso
+            if (data && data.session) { AUTH.session = data.session; return data.session.access_token; }
+        }
+    } catch (_) {}
+    return AUTH.session ? AUTH.session.access_token : null;
+}
+
 async function fetchSupabase(endpoint, mes, ano) {
     if (endpoint === 'campanha14') return null;
+    if (!AUTH.unidade) return null;   // sem login não há consulta
 
     try {
         let url;
+        const token = await getAccessToken();
+        if (!token) return null;
         const headers = {
             'apikey': SUPABASE_ANON,
-            'Authorization': `Bearer ${SUPABASE_ANON}`
+            'Authorization': `Bearer ${token}`
         };
+        // ★ Multi-franquia: toda consulta é filtrada pela unidade do usuário
+        const uf = `&unidade_id=eq.${encodeURIComponent(AUTH.unidade.id)}`;
         if (endpoint === 'recorrencia_vendedor') {
-            url = `${SUPABASE_URL}/rest/v1/recorrencia_vendedor?select=*&limit=1`;
+            url = `${SUPABASE_URL}/rest/v1/recorrencia_vendedor?select=*&limit=1${uf}`;
         } else if (endpoint === 'app') {
-            url = `${SUPABASE_URL}/rest/v1/app_dashboard?mes=eq.${mes}&ano=eq.${ano}&select=*`;
+            url = `${SUPABASE_URL}/rest/v1/app_dashboard?mes=eq.${mes}&ano=eq.${ano}&select=*${uf}`;
         } else if (endpoint === 'vendas_tim') {
-            url = `${SUPABASE_URL}/rest/v1/vendas_tim?mes=eq.${mes}&ano=eq.${ano}&select=*`;
+            url = `${SUPABASE_URL}/rest/v1/vendas_tim?mes=eq.${mes}&ano=eq.${ano}&select=*${uf}`;
         } else if (endpoint === 'recorrencia') {
             // ★ NOVO: Busca a nova tabela de qualidade
-            url = `${SUPABASE_URL}/rest/v1/qualidade_retencao?mes=eq.${mes}&ano=eq.${ano}&select=*`;
+            url = `${SUPABASE_URL}/rest/v1/qualidade_retencao?mes=eq.${mes}&ano=eq.${ano}&select=*${uf}`;
         } else {
-            url = `${SUPABASE_URL}/rest/v1/${endpoint}?mes=eq.${mes}&ano=eq.${ano}&select=*`;
+            url = `${SUPABASE_URL}/rest/v1/${endpoint}?mes=eq.${mes}&ano=eq.${ano}&select=*${uf}`;
         }
         const resp = await fetch(url, { headers });
         if (!resp.ok) return null;
@@ -246,6 +271,12 @@ async function fetchData(endpoint, mes, ano) {
         return { status: 'success', data: dadosSupabase, fonte: 'supabase' };
     }
 
+    // Apps Script (API_URL) pertence à unidade padrão: outras franquias nunca caem nele
+    // (evita exibir dados de outra unidade).
+    if (!AUTH.unidade || AUTH.unidade.id !== UNIDADE_PADRAO_ID) {
+        return { status: 'error', error: 'Ainda não há dados sincronizados para este período (ou houve falha de conexão). Tente novamente em instantes.' };
+    }
+
     const url = buildUrl(endpoint, mes, ano);
     try {
         const resp = await fetch(url);
@@ -271,6 +302,7 @@ async function fetchData(endpoint, mes, ano) {
 
 // ── Auto-refresh silencioso a cada 30min ──────────────────────────────────
 setInterval(() => {
+    if (!AUTH.unidade) return;   // deslogado: nada a atualizar
     const k = cacheKey(currentDashboard, currentMonth, currentYear);
     invalidateCache(k);
     silentRefresh();
@@ -423,9 +455,244 @@ document.addEventListener('DOMContentLoaded', function(){
 
     if (sidebarOverlay) sidebarOverlay.addEventListener('click', closeSidebarMobile);
 
-    loadDashboard();
-    initPeriodModal();
+    // ★ Nada é carregado antes do login: o fluxo continua em iniciarAutenticacao()
+    iniciarAutenticacao();
 });
+
+// ============================================================================
+// AUTENTICAÇÃO (Supabase Auth — e-mail e senha) E UNIDADE
+// ============================================================================
+
+function authEl(id){ return document.getElementById(id); }
+
+function authMostrarErro(msg){
+    const el = authEl('authError');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.classList.toggle('show', !!msg);
+}
+
+function authModoChecando(on){
+    const card = authEl('authCard');
+    if (card) card.classList.toggle('is-checking', !!on);
+}
+
+function mostrarLogin(msg){
+    document.body.classList.add('auth-pending');
+    authModoChecando(false);
+    authMostrarErro(msg || '');
+    const btn = authEl('authSubmit');
+    if (btn) { btn.disabled = false; btn.querySelector('span').textContent = 'Entrar'; }
+    const email = authEl('authEmail');
+    if (email && !email.value) email.focus();
+}
+
+function esconderLogin(){
+    document.body.classList.remove('auth-pending');
+    authMostrarErro('');
+    const pass = authEl('authPassword');
+    if (pass) pass.value = '';
+}
+
+function normalizarModulos(m){
+    if (Array.isArray(m)) return m.map(String);
+    if (typeof m === 'string') { try { const p = JSON.parse(m); return Array.isArray(p) ? p.map(String) : []; } catch(_) { return []; } }
+    return [];
+}
+
+// Ajusta cor (#rrggbb) misturando com branco (t>0) ou preto (t<0)
+function ajustarCor(hex, t){
+    const n = parseInt(hex.slice(1), 16);
+    const c = [(n>>16)&255, (n>>8)&255, n&255].map(v => {
+        const alvo = t >= 0 ? 255 : 0;
+        return Math.round(v + (alvo - v) * Math.abs(t));
+    });
+    return '#' + c.map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+function aplicarCorPrimaria(cor){
+    const ok = typeof cor === 'string' && /^#[0-9a-fA-F]{6}$/.test(cor);
+    const base = ok ? cor : COR_PRIMARIA_PADRAO;
+    const root = document.documentElement.style;
+    if (base.toLowerCase() === COR_PRIMARIA_PADRAO) {
+        // cor padrão: remove overrides e deixa o styles.css valer (visual atual intacto)
+        ['--primary','--primary-dark','--primary-light','--primary-mid','--success'].forEach(v => root.removeProperty(v));
+        return;
+    }
+    root.setProperty('--primary', base);
+    root.setProperty('--primary-dark', ajustarCor(base, -0.25));
+    root.setProperty('--primary-mid', ajustarCor(base, 0.15));
+    root.setProperty('--primary-light', ajustarCor(base, 0.88));
+}
+
+function aplicarUnidade(u){
+    // Identidade
+    document.title = `Dashboard — ${u.nome_exibicao}`;
+    const nomeSide = authEl('sidebarUnidadeNome');
+    if (nomeSide) nomeSide.textContent = String(u.nome_exibicao || '').toUpperCase();
+    const foot = authEl('footerUnidade');
+    if (foot) foot.textContent = String(u.nome_exibicao || '').toUpperCase();
+
+    aplicarCorPrimaria(u.cor_primaria);
+
+    if (u.logo_url && /^https:\/\//i.test(u.logo_url)) {
+        const logo = authEl('logoPadrao');
+        if (logo) logo.src = u.logo_url;
+    }
+
+    // Meta de aprovação da unidade (disponível para os renders)
+    window.META_APROVACAO = Number.isFinite(Number(u.meta_aprovacao)) ? Number(u.meta_aprovacao) : 90;
+
+    // Módulos: só os botões de modulos_ativos ficam visíveis
+    const ativos = normalizarModulos(u.modulos_ativos);
+    document.querySelectorAll('.sidebar-btn').forEach(btn => {
+        btn.hidden = !ativos.includes(btn.dataset.dashboard);
+        btn.style.display = btn.hidden ? 'none' : '';
+    });
+}
+
+async function carregarUnidadeDoUsuario(userId){
+    const { data: vinculos, error: e1 } = await AUTH.client
+        .from('usuarios_unidades').select('unidade_id').eq('user_id', userId);
+    if (e1 || !vinculos || vinculos.length === 0) return null;
+
+    const ids = vinculos.map(v => v.unidade_id);
+    const { data: unidades, error: e2 } = await AUTH.client
+        .from('unidades')
+        .select('id,nome_exibicao,logo_url,cor_primaria,modulos_ativos,meta_aprovacao,ativo')
+        .in('id', ids).eq('ativo', true).order('id');
+    if (e2 || !unidades || unidades.length === 0) return null;
+    return unidades[0];
+}
+
+async function entrarNoDashboard(session){
+    if (AUTH.entrando) return;
+    AUTH.entrando = true;
+    try {
+        AUTH.session = session;
+        authModoChecando(true);
+
+        const unidade = await carregarUnidadeDoUsuario(session.user.id);
+        if (!unidade) {
+            await AUTH.client.auth.signOut();
+            mostrarLogin('Seu usuário não está vinculado a uma unidade ativa. Fale com o administrador.');
+            return;
+        }
+
+        AUTH.unidade = unidade;
+        aplicarUnidade(unidade);
+        esconderLogin();
+
+        if (!AUTH.periodModalOk) { initPeriodModal(); AUTH.periodModalOk = true; }
+
+        const visiveis = Array.from(document.querySelectorAll('.sidebar-btn')).filter(b => !b.hidden);
+        if (visiveis.length === 0) {
+            hideLoading();
+            dashboardContent.innerHTML = '<div class="error-message"><h3>Nenhum módulo ativo</h3><p>Sua unidade ainda não tem dashboards habilitados.</p></div>';
+            return;
+        }
+
+        const atual = visiveis.find(b => b.dataset.dashboard === currentDashboard);
+        if (atual) {
+            document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.toggle('active', b === atual));
+            if (window.updateFabVisibility) window.updateFabVisibility();
+            loadDashboard();
+        } else {
+            visiveis[0].click();   // o handler do botão atualiza título/filtro e chama loadDashboard()
+        }
+    } catch (err) {
+        console.error('[auth] erro ao entrar:', err);
+        mostrarLogin('Não foi possível carregar sua unidade. Tente novamente.');
+    } finally {
+        AUTH.entrando = false;
+    }
+}
+
+function limparSessaoLocal(){
+    // Gráficos, dados em memória e caches (inclui localStorage) da sessão anterior
+    Object.keys(chartInstances).forEach(id => destroyChart(id));
+    window._dashboardData = null;
+    CACHE_MEM.clear();
+    try {
+        Object.keys(localStorage).filter(k => k.startsWith(LS_PREFIX)).forEach(k => localStorage.removeItem(k));
+    } catch(_) {}
+
+    AUTH.unidade = null;
+    AUTH.session = null;
+
+    // Volta identidade/visual ao neutro e reexibe todos os botões
+    aplicarCorPrimaria(COR_PRIMARIA_PADRAO);
+    document.title = 'Dashboard — Entrar';
+    const nomeSide = authEl('sidebarUnidadeNome'); if (nomeSide) nomeSide.textContent = '';
+    const foot = authEl('footerUnidade'); if (foot) foot.textContent = '';
+    const logo = authEl('logoPadrao'); if (logo) logo.src = 'logo.png';
+    document.querySelectorAll('.sidebar-btn').forEach(b => { b.hidden = false; b.style.display = ''; });
+    if (dashboardContent) dashboardContent.innerHTML = '';
+}
+
+async function sairDoDashboard(){
+    try { await AUTH.client.auth.signOut(); } catch(_) {}
+    limparSessaoLocal();
+    mostrarLogin('');
+}
+
+async function iniciarAutenticacao(){
+    authModoChecando(true);
+
+    if (!window.supabase || !window.supabase.createClient) {
+        mostrarLogin('Não foi possível carregar o módulo de login. Verifique sua conexão e recarregue a página.');
+        return;
+    }
+
+    AUTH.client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false }
+    });
+
+    // Mantém o token atualizado; sessão encerrada em outra aba → volta ao login.
+    // (callback síncrono de propósito: não chamar o Supabase aqui dentro)
+    AUTH.client.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_OUT') {
+            if (AUTH.unidade) { limparSessaoLocal(); mostrarLogin('Sessão encerrada.'); }
+            return;
+        }
+        if (session) AUTH.session = session;
+    });
+
+    const form = authEl('authForm');
+    form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const email = authEl('authEmail').value.trim();
+        const senha = authEl('authPassword').value;
+        if (!email || !senha) { authMostrarErro('Informe e-mail e senha.'); return; }
+
+        const btn = authEl('authSubmit');
+        btn.disabled = true;
+        btn.querySelector('span').textContent = 'Entrando…';
+        authMostrarErro('');
+
+        const { data, error } = await AUTH.client.auth.signInWithPassword({ email, password: senha });
+        if (error || !data || !data.session) {
+            const msg = (error && /invalid login credentials/i.test(error.message))
+                ? 'E-mail ou senha incorretos.'
+                : 'Não foi possível entrar. Verifique sua conexão e tente novamente.';
+            mostrarLogin(msg);
+            return;
+        }
+        await entrarNoDashboard(data.session);
+    });
+
+    const logoutBtn = authEl('logoutBtn');
+    if (logoutBtn) logoutBtn.addEventListener('click', sairDoDashboard);
+
+    // Sessão já existente (recarregou a página)?
+    try {
+        const { data } = await AUTH.client.auth.getSession();
+        if (data && data.session) { await entrarNoDashboard(data.session); return; }
+    } catch (err) {
+        console.error('[auth] getSession falhou:', err);
+    }
+    mostrarLogin('');
+}
 
 // ── loadDashboard ──────────────────────────────────────────────────────────
 async function loadDashboard(){
