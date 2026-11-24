@@ -838,17 +838,40 @@ function renderResumoDashboard(vendas, app, adim){
     </div>
     ${buildRankingCompleto(consultoresRanking, mes, ano)}`;
 
-    createChart('chRes1',{type:'bar',data:{labels:sectors,datasets:[{label:'Aprovados',data:sectors.map(s=>bySector[s].reduce((a,c)=>a+c.aprovados,0)),backgroundColor:C.green,borderRadius:6,borderSkipped:false},{label:'Pendências',data:sectors.map(s=>bySector[s].reduce((a,c)=>a+c.pendencias,0)),backgroundColor:C.warn,borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:legendTop()},scales:scalesXY()}});
-    createChart('chRes2',{type:'doughnut',data:{labels:['Aprovados','Pendências','Não Enviado','Expirado'],datasets:[{data:[geral.aprovados,geral.pendencias,geral.naoEnviado,geral.expirado||0],backgroundColor:[C.green,C.warn,C.danger,C.gray],borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{position:'bottom',labels:{boxWidth:12,padding:12}}}}});
+    const barOpts = () => ({
+        responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:'index', intersect:false },
+        plugins:{ legend:legendTop(), tooltip:tooltipDark() },
+        scales:scalesXY()
+    });
+
+    createChart('chRes1',{type:'bar',data:{labels:sectors,datasets:[
+        barDS('Aprovados',  sectors.map(s=>bySector[s].reduce((a,c)=>a+c.aprovados,0)),  CH.green),
+        barDS('Pendências', sectors.map(s=>bySector[s].reduce((a,c)=>a+c.pendencias,0)), CH.warn)
+    ]},options:barOpts()});
+
+    createChart('chRes2',{type:'doughnut',data:{labels:['Aprovados','Pendências','Não Enviado','Expirado'],datasets:[{
+        data:[geral.aprovados,geral.pendencias,geral.naoEnviado,geral.expirado||0],
+        backgroundColor:[CH.green,CH.warn,CH.danger,CH.gray],borderWidth:2,borderColor:'#ffffff',hoverOffset:6
+    }]},options:doughnutOpts()});
 
     if(app){
         const appBySector = groupBySector(app.consultores.filter(c=>!c.origem||c.origem!=='retencao'));
-        createChart('chRes3',{type:'bar',data:{labels:sectors,datasets:[{label:'Com App',data:sectors.map(s=>(appBySector[s]||[]).reduce((a,c)=>a+(c.sim||0),0)),backgroundColor:C.teal,borderRadius:6,borderSkipped:false},{label:'Sem App',data:sectors.map(s=>(appBySector[s]||[]).reduce((a,c)=>a+(c.nao||0),0)),backgroundColor:C.danger,borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:legendTop()},scales:scalesXY()}});
+        createChart('chRes3',{type:'bar',data:{labels:sectors,datasets:[
+            barDS('Com App', sectors.map(s=>(appBySector[s]||[]).reduce((a,c)=>a+(c.sim||0),0)), CH.teal),
+            barDS('Sem App', sectors.map(s=>(appBySector[s]||[]).reduce((a,c)=>a+(c.nao||0),0)), CH.danger)
+        ]},options:barOpts()});
     }
     if(adim){
-        createChart('chRes4',{type:'doughnut',data:{labels:['Mens. OK','Mens. Aberto','Mens. Atraso'],datasets:[{data:[adim.geral.mensOk,adim.geral.mensAberto,adim.geral.mensAtraso],backgroundColor:[C.green,C.warn,C.danger],borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{position:'bottom',labels:{boxWidth:12,padding:12}}}}});
+        createChart('chRes4',{type:'doughnut',data:{labels:['Mens. OK','Mens. Aberto','Mens. Atraso'],datasets:[{
+            data:[adim.geral.mensOk,adim.geral.mensAberto,adim.geral.mensAtraso],
+            backgroundColor:[CH.green,CH.warn,CH.danger],borderWidth:2,borderColor:'#ffffff',hoverOffset:6
+        }]},options:doughnutOpts()});
     }
-    createChart('chRes5',{type:'bar',data:{labels:['Total','Aprovados','Pendências'],datasets:[{label:'Loja',data:[vendas.vendasLoja.total,vendas.vendasLoja.aprovados,vendas.vendasLoja.pendencias],backgroundColor:C.green,borderRadius:6,borderSkipped:false},{label:'Web/Tele',data:[vendas.vendasWeb.total,vendas.vendasWeb.aprovados,vendas.vendasWeb.pendencias],backgroundColor:C.lime,borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:legendTop()},scales:scalesXY()}});
+    createChart('chRes5',{type:'bar',data:{labels:['Total','Aprovados','Pendências'],datasets:[
+        barDS('Loja',     [vendas.vendasLoja.total,vendas.vendasLoja.aprovados,vendas.vendasLoja.pendencias], CH.green),
+        barDS('Web/Tele', [vendas.vendasWeb.total,vendas.vendasWeb.aprovados,vendas.vendasWeb.pendencias],    CH.lime)
+    ]},options:barOpts()});
 }
 
 function kpiCard(label, value, icon, cor, sub){
@@ -922,7 +945,6 @@ function renderDocumentacaoDashboard(d) {
 
         if (sector === 'TELEVENDAS' && list.length > 0) {
             const cons = {
-                nome: '📺 TELEVENDAS — Consolidado',
                 total: 0, cancelados: 0, aprovados: 0, pendencias: 0,
                 naoEnviado: 0, expirado: 0, pendente: 0, reprovados: 0,
                 promo:  { total:0, cancelados:0, aprovados:0 },
@@ -949,7 +971,7 @@ function renderDocumentacaoDashboard(d) {
                 }
             });
 
-            const pct   = calcPercentDoc(cons.aprovados, cons.total, cons.cancelados);
+            const pct = calcPercentDoc(cons.aprovados, cons.total, cons.cancelados);
 
             return `
             <div class="sector-card">
@@ -961,23 +983,18 @@ function renderDocumentacaoDashboard(d) {
                     <div class="metric-percent ${getPercentClass(pct)}">${pct}% aprovados</div>
                 </div>
                 <div class="consultant-grid">
-                    <div class="consultant-card">
-                        <div class="consultant-header">
-                            <div class="consultant-name">📺 TELEVENDAS — Consolidado</div>
-                            <div class="consultant-sector ${getSectorClass(sector)}">${sector}</div>
-                        </div>
-                        <div class="metric-grid">
-                            ${metricItem('Total',        cons.total || 0)}
-                            ${metricItem('Cancelados',   cons.cancelados || 0, '#991b1b')}
-                            ${metricItem('Base líquida', (cons.total || 0) - (cons.cancelados || 0))}
-                            ${metricItem('Aprovados',    cons.aprovados || 0, 'var(--success)')}
-                            ${metricItem('Pendências',   cons.pendencias || 0, 'var(--danger)')}
-                            ${metricItem('Não Enviado',  cons.naoEnviado || 0, 'var(--warning)')}
-                            ${metricItem('Expirado',     cons.expirado || 0, 'var(--gray)')}
-                            ${metricPercent('% Aprovados', pct)}
-                        </div>
-                        ${temColunasPromo ? promoMiniCards(cons) : ''}
-                    </div>
+                    ${consultantCardPro({
+                        nome: '📺 TELEVENDAS — Consolidado',
+                        badge: `<div class="consultant-sector ${getSectorClass(sector)}">${sector}</div>`,
+                        hero: [
+                            { label: 'Total',     value: cons.total || 0 },
+                            { label: 'Aprovados', value: cons.aprovados || 0, color: 'var(--success)' }
+                        ],
+                        pct,
+                        pctLabel: '% Aprovados',
+                        details: docDetails(cons),
+                        extra: temColunasPromo ? promoMiniCards(cons) : ''
+                    })}
                 </div>
             </div>`;
         }
@@ -1028,24 +1045,19 @@ function renderDocumentacaoDashboard(d) {
                             </div>`;
                     }
 
-                    return `
-                    <div class="consultant-card ${isRecepcao?'consultant-card-recepcao':''}">
-                        <div class="consultant-header">
-                            <div class="consultant-name">${c.nome || 'Sem nome'}</div>
-                            ${isRecepcao ? badgeRecepcao : `<div class="consultant-sector ${getSectorClass(sector)}">${sector}</div>`}
-                        </div>
-                        <div class="metric-grid">
-                            ${metricItem('Total',        c.total || 0)}
-                            ${metricItem('Cancelados',   c.cancelados || 0, '#991b1b')}
-                            ${metricItem('Base líquida', (c.total || 0) - (c.cancelados || 0))}
-                            ${metricItem('Aprovados',    c.aprovados || 0, 'var(--success)')}
-                            ${metricItem('Pendências',   c.pendencias || 0, 'var(--danger)')}
-                            ${metricItem('Não Enviado',  c.naoEnviado || 0, 'var(--warning)')}
-                            ${metricItem('Expirado',     c.expirado || 0, 'var(--gray)')}
-                            ${metricPercent('% Aprovados', p)}
-                        </div>
-                        ${temColunasPromo ? promoMiniCards(c) : ''}
-                    </div>`;
+                    return consultantCardPro({
+                        nome: c.nome,
+                        cardClass: isRecepcao ? 'consultant-card-recepcao' : '',
+                        badge: isRecepcao ? badgeRecepcao : `<div class="consultant-sector ${getSectorClass(sector)}">${sector}</div>`,
+                        hero: [
+                            { label: 'Total',     value: c.total || 0 },
+                            { label: 'Aprovados', value: c.aprovados || 0, color: 'var(--success)' }
+                        ],
+                        pct: p,
+                        pctLabel: '% Aprovados',
+                        details: docDetails(c),
+                        extra: temColunasPromo ? promoMiniCards(c) : ''
+                    });
                 }).join('')}
             </div>
         </div>`;
@@ -1321,6 +1333,22 @@ function renderAppDashboard(d){
     const bySector = groupBySector(regular);
     const sectors = sortSectors(Object.keys(bySector), ['VENDAS','RECEPCAO','REFILIACAO','WEB SITE','TELEVENDAS','OUTROS']);
 
+    const appCard = (c, badge, borderColor) => consultantCardPro({
+        nome: c.nome,
+        badge,
+        borderColor,
+        hero: [
+            { label: 'Total',   value: c.total || 0 },
+            { label: 'Com App', value: c.sim || 0, color: 'var(--success)' }
+        ],
+        pct: calcPercent(c.sim || 0, c.total),
+        pctLabel: '% Com App',
+        details: [
+            { label: 'Sem app',    value: c.nao || 0, color: 'var(--danger)' },
+            { label: 'Cancelados', value: c.cancelado || 0 }
+        ]
+    });
+
     dashboardContent.innerHTML = `
     <h2 class="dash-title"><i class="fas fa-mobile-alt" style="color:var(--teal)"></i> Dashboard App — ${mes} ${ano}</h2>
 
@@ -1339,23 +1367,11 @@ function renderAppDashboard(d){
                 <h3>Consultoras de Retenção</h3>
             </div>
             <div class="consultant-grid">
-                ${consultorasRetencao.map(c => {
-                    const p = calcPercent(c.sim, c.total);
-                    return `
-                    <div class="consultant-card" style="border-left:3px solid #f59e0b;">
-                        <div class="consultant-header">
-                            <div class="consultant-name">${c.nome} (RETENÇÃO)</div>
-                            <div class="consultant-sector sector-retencao">RETENÇÃO</div>
-                        </div>
-                        <div class="metric-grid">
-                            ${metricItem('Total', c.total)}
-                            ${metricItem('Com App', c.sim, 'var(--success)')}
-                            ${metricItem('Sem App', c.nao, 'var(--danger)')}
-                            ${metricItem('Cancelados', c.cancelado||0, 'var(--gray)')}
-                            ${metricPercent('% Com App', p)}
-                        </div>
-                    </div>`;
-                }).join('')}
+                ${consultorasRetencao.map(c => appCard(
+                    { ...c, nome: `${c.nome} (RETENÇÃO)` },
+                    '<div class="consultant-sector sector-retencao">RETENÇÃO</div>',
+                    '#f59e0b'
+                )).join('')}
             </div>
         </div>` : ''}
 
@@ -1376,23 +1392,9 @@ function renderAppDashboard(d){
                 <div class="metric-percent ${getPercentClass(pct)}">${pct}% com app</div>
             </div>
             <div class="consultant-grid">
-                ${list.sort((a,b) => b.total - a.total).map(c => {
-                    const p = calcPercent(c.sim||0, c.total);
-                    return `
-                    <div class="consultant-card">
-                        <div class="consultant-header">
-                            <div class="consultant-name">${c.nome}</div>
-                            <div class="consultant-sector ${getSectorClass(sector)}">${sector}</div>
-                        </div>
-                        <div class="metric-grid">
-                            ${metricItem('Total', c.total)}
-                            ${metricItem('Com App', c.sim||0, 'var(--success)')}
-                            ${metricItem('Sem App', c.nao||0, 'var(--danger)')}
-                            ${metricItem('Cancelados', c.cancelado||0, 'var(--gray)')}
-                            ${metricPercent('% Com App', p)}
-                        </div>
-                    </div>`;
-                }).join('')}
+                ${list.sort((a,b) => b.total - a.total).map(c =>
+                    appCard(c, `<div class="consultant-sector ${getSectorClass(sector)}">${sector}</div>`)
+                ).join('')}
             </div>
         </div>`;
     }).join('')}`;
@@ -1515,40 +1517,35 @@ function renderRecorrenciaDashboard(d){
 
     function cardConsultor(nome) {
         const c = consultores[nome];
-        const p = c.percentualOK || 0;
-        const corPct = p >= 90 ? 'percent-high' : p >= 70 ? 'percent-medium' : 'percent-low';
-
-        return `
-        <div class="consultant-card" style="border-left-color: var(--teal);">
-            <div class="consultant-header">
-                <div class="consultant-name">${c.nome}</div>
-                <div class="consultant-sector sector-retencao">RETENÇÃO</div>
-            </div>
-            <div class="metric-grid">
-                ${metricItem('Total Retenção', c.totalRetencao)}
-                ${metricItem('Com Termo (SIM)', c.totalComTermo, 'var(--success)')}
-                ${metricItem('Sem Termo', c.totalSemTermo, 'var(--danger)')}
-                <div class="metric-item">
-                    <div class="metric-label">% OK</div>
-                    <div class="metric-percent ${corPct}">${p}%</div>
-                </div>
-            </div>
-        </div>`;
+        return consultantCardPro({
+            nome: c.nome,
+            borderColor: 'var(--teal)',
+            badge: '<div class="consultant-sector sector-retencao">RETENÇÃO</div>',
+            hero: [
+                { label: 'Retenção',  value: c.totalRetencao },
+                { label: 'Com termo', value: c.totalComTermo, color: 'var(--success)' }
+            ],
+            pct: c.percentualOK || 0,
+            pctLabel: '% OK',
+            details: [
+                { label: 'Sem termo', value: c.totalSemTermo, color: 'var(--danger)' }
+            ]
+        });
     }
 
     dashboardContent.innerHTML = `
     <h2 class="dash-title"><i class="fas fa-clipboard-check" style="color:var(--teal)"></i> Qualidade da Retenção — ${periodo.atual}</h2>
 
-    <div style="background:rgba(13,148,136,0.08);padding:14px 18px;border-radius:12px;margin-bottom:24px;border-left:4px solid var(--teal);">
+    <div style="background:rgba(13,148,136,0.07);padding:14px 18px;border-radius:12px;margin-bottom:24px;border:1px solid rgba(13,148,136,0.2);border-left:4px solid var(--teal);">
         <p style="margin:0;color:#0f766e;font-weight:600;font-size:0.9rem;">
             <i class="fas fa-info-circle"></i> Período: <strong>${periodo.atual}</strong>
         </p>
     </div>
 
-    <h3 class="section-title" style="border-bottom:3px solid var(--teal);color:var(--teal)">
+    <h3 class="section-title" style="color:var(--teal)">
         <i class="fas fa-globe" style="color:var(--teal)"></i> Resumo Geral
     </h3>
-    
+
     <div class="card" style="max-width: 600px; margin: 0 auto 36px; border-top: 4px solid var(--teal);">
         <div class="card-header">
             <div class="card-title" style="color: var(--teal)">Qualidade Global</div>
@@ -1563,7 +1560,7 @@ function renderRecorrenciaDashboard(d){
     </div>
 
     ${nomes.length > 0 ? `
-    <h3 class="section-title" style="border-bottom:3px solid var(--primary);color:var(--primary)">
+    <h3 class="section-title" style="color:var(--primary)">
         <i class="fas fa-users" style="color:var(--primary)"></i> Detalhamento por Consultor
     </h3>
     <div class="consultant-grid">
@@ -1585,12 +1582,29 @@ function renderRecorrenciaVendedorDashboard(d){
     if(!geral||!consultores){showError('Dados de Recorrência Vendedor não encontrados');return;}
     const pG=calcPercent(geral.totalOk+geral.totalEmAberto,geral.totalVendasPromocao);
     const setores=[{nome:'VENDAS',cor:C.green,icone:'fas fa-shopping-cart'},{nome:'REFILIACAO',cor:C.warn,icone:'fas fa-user-plus'},{nome:'RECEPCAO',cor:C.teal,icone:'fas fa-headset'}];
+
+    const vendCard = c => consultantCardPro({
+        nome: c.nome,
+        badge: `<div class="consultant-sector ${getSectorClass(c.setor)}">${c.setor}</div>`,
+        hero: [
+            { label: 'Vendas', value: c.totalVendasPromocao },
+            { label: 'OK',     value: c.totalOk || 0, color: 'var(--success)' }
+        ],
+        pct: calcPercent((c.totalOk||0)+(c.totalEmAberto||0), c.totalVendasPromocao),
+        pctLabel: '% OK+Aberto',
+        details: [
+            { label: 'Em aberto', value: c.totalEmAberto || 0, color: '#b45309' },
+            { label: 'Atraso',    value: c.totalAtraso || 0,   color: 'var(--danger)' },
+            { label: 'Outros',    value: c.totalOutros || 0 }
+        ]
+    });
+
     dashboardContent.innerHTML=`
     <h2 class="dash-title"><i class="fas fa-handshake" style="color:var(--teal)"></i> Recorrência Vendedor — Dados Completos</h2>
-    <div style="background:#e0f2f1;padding:14px 18px;border-radius:12px;margin-bottom:24px;border-left:4px solid var(--teal)"><p style="margin:0;color:#065f46;font-weight:600;font-size:0.9rem"><i class="fas fa-database"></i> <strong>${totalRegistros||0}</strong> registros | <strong>${totalConsultores}</strong> consultores</p></div>
+    <div style="background:rgba(13,148,136,0.07);padding:14px 18px;border-radius:12px;margin-bottom:24px;border:1px solid rgba(13,148,136,0.2);border-left:4px solid var(--teal)"><p style="margin:0;color:#065f46;font-weight:600;font-size:0.9rem"><i class="fas fa-database"></i> <strong>${totalRegistros||0}</strong> registros | <strong>${totalConsultores}</strong> consultores</p></div>
     <div class="main-cards"><div class="card" style="border-top:3px solid var(--teal)"><div class="card-header"><div class="card-title">Total Geral</div><div class="card-icon" style="background:#e0f2f1;color:var(--teal)"><i class="fas fa-chart-bar"></i></div></div><div class="metric-grid">${metricItem('Total Vendas',geral.totalVendasPromocao)}${metricItem('OK',geral.totalOk,'var(--success)')}${metricItem('Em Aberto',geral.totalEmAberto,'var(--warning)')}${metricItem('Atraso',geral.totalAtraso,'var(--danger)')}${metricItem('Outros',geral.totalOutros||0,'var(--gray)')}${metricPercent('% OK+Aberto',pG)}</div></div></div>
-    ${setores.map(si=>{const lista=consultores.filter(c=>c.setor===si.nome);if(!lista.length)return '';const tot=lista.reduce((s,c)=>s+c.totalVendasPromocao,0),ok=lista.reduce((s,c)=>s+(c.totalOk||0)+(c.totalEmAberto||0),0);const pct=calcPercent(ok,tot);return `<div class="sector-card"><div class="sector-header"><div class="sector-title"><i class="${si.icone}" style="color:${si.cor}"></i><span style="color:${si.cor}">${si.nome}</span><span class="sector-count">${lista.length} consultor${lista.length!==1?'es':''}</span></div><div class="metric-percent ${getPercentClass(pct)}">${pct}% OK+Aberto</div></div><div class="consultant-grid">${lista.sort((a,b)=>b.totalVendasPromocao-a.totalVendasPromocao).map(c=>{const p=calcPercent((c.totalOk||0)+(c.totalEmAberto||0),c.totalVendasPromocao);return `<div class="consultant-card"><div class="consultant-header"><div class="consultant-name">${c.nome}</div><div class="consultant-sector ${getSectorClass(c.setor)}">${c.setor}</div></div><div class="metric-grid">${metricItem('Total Vendas',c.totalVendasPromocao)}${metricItem('OK',c.totalOk||0,'var(--success)')}${metricItem('Em Aberto',c.totalEmAberto||0,'var(--warning)')}${metricItem('Atraso',c.totalAtraso||0,'var(--danger)')}${metricItem('Outros',c.totalOutros||0,'var(--gray)')}${metricPercent('% OK+Aberto',p)}</div></div>`;}).join('')}</div></div>`;}).join('')}
-    <div class="card" style="margin-top:36px;background:linear-gradient(135deg,var(--primary),#007a3d);color:white"><div class="card-header" style="border-bottom-color:rgba(255,255,255,0.2)"><div class="card-title" style="color:white">📊 Resumo Final</div><div class="card-icon" style="background:rgba(255,255,255,0.2)"><i class="fas fa-clipboard-list"></i></div></div><div class="metric-grid">${metricItemWhite('Total Consultores',totalConsultores||consultores.length)}${metricItemWhite('Total Vendas',geral.totalVendasPromocao)}${metricItemWhite('Média por Consultor',consultores.length>0?Math.round(geral.totalVendasPromocao/consultores.length):0)}${metricItemWhite('Melhor %',consultores.length>0?Math.max(...consultores.map(c=>calcPercent((c.totalOk||0)+(c.totalEmAberto||0),c.totalVendasPromocao)))+'%':'0%')}</div></div>`;
+    ${setores.map(si=>{const lista=consultores.filter(c=>c.setor===si.nome);if(!lista.length)return '';const tot=lista.reduce((s,c)=>s+c.totalVendasPromocao,0),ok=lista.reduce((s,c)=>s+(c.totalOk||0)+(c.totalEmAberto||0),0);const pct=calcPercent(ok,tot);return `<div class="sector-card"><div class="sector-header"><div class="sector-title"><i class="${si.icone}" style="color:${si.cor}"></i><span style="color:${si.cor}">${si.nome}</span><span class="sector-count">${lista.length} consultor${lista.length!==1?'es':''}</span></div><div class="metric-percent ${getPercentClass(pct)}">${pct}% OK+Aberto</div></div><div class="consultant-grid">${lista.sort((a,b)=>b.totalVendasPromocao-a.totalVendasPromocao).map(vendCard).join('')}</div></div>`;}).join('')}
+    <div class="card" style="margin-top:36px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;border:none"><div class="card-header" style="border-bottom-color:rgba(255,255,255,0.2)"><div class="card-title" style="color:white">📊 Resumo Final</div><div class="card-icon" style="background:rgba(255,255,255,0.2);color:white"><i class="fas fa-clipboard-list"></i></div></div><div class="metric-grid">${metricItemWhite('Total Consultores',totalConsultores||consultores.length)}${metricItemWhite('Total Vendas',geral.totalVendasPromocao)}${metricItemWhite('Média por Consultor',consultores.length>0?Math.round(geral.totalVendasPromocao/consultores.length):0)}${metricItemWhite('Melhor %',consultores.length>0?Math.max(...consultores.map(c=>calcPercent((c.totalOk||0)+(c.totalEmAberto||0),c.totalVendasPromocao)))+'%':'0%')}</div></div>`;
 }
 
 // ============================================================================
@@ -1644,28 +1658,28 @@ function renderRefuturizaDashboard(d) {
             const cCancel = Number(c.cancelado) || 0;
             const cBase = cTotal - cCancel;
             const p = cBase > 0 ? Math.round(((Number(c.comLigacao) || 0) / cBase) * 100) : 0;
-            return `
-            <div class="consultant-card">
-                <div class="consultant-header">
-                    <div class="consultant-name">${c.nome || 'Desconhecido'}</div>
-                    <div class="consultant-sector" style="background:var(--primary-light);color:var(--accent-dark)">REFUTURIZA</div>
-                </div>
-                <div class="metric-grid">
-                    ${metricItem('TOTAL BRUTO', cTotal)}
-                    ${metricItem('CANCELADOS', cCancel, '#991b1b')}
-                    ${metricItem('BASE LÍQUIDA', cBase, 'var(--primary)')}
-                    ${metricItem('COM LIGAÇÃO', c.comLigacao || 0, 'var(--success)')}
-                    ${metricItem('SEM LIGAÇÃO', c.semLigacao || 0, 'var(--danger)')}
-                    ${metricPercent('% COM LIGAÇÃO', p)}
-                </div>
-            </div>`;
+            return consultantCardPro({
+                nome: c.nome || 'Desconhecido',
+                badge: '<div class="consultant-sector" style="background:var(--primary-light);color:var(--accent-dark)">REFUTURIZA</div>',
+                hero: [
+                    { label: 'Base líquida', value: cBase },
+                    { label: 'Com ligação',  value: c.comLigacao || 0, color: 'var(--success)' }
+                ],
+                pct: p,
+                pctLabel: '% Com ligação',
+                details: [
+                    { label: 'Total bruto',  value: cTotal },
+                    { label: 'Cancelados',   value: cCancel, color: '#b91c1c' },
+                    { label: 'Sem ligação',  value: c.semLigacao || 0, color: 'var(--danger)' }
+                ]
+            });
         }).join('')}
     </div>
 
-    <div class="card" style="margin-top:36px;background:linear-gradient(135deg,var(--primary),#007a3d);color:white">
+    <div class="card" style="margin-top:36px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;border:none">
         <div class="card-header" style="border-bottom-color:rgba(255,255,255,0.2)">
             <div class="card-title" style="color:white">📊 Resumo Final</div>
-            <div class="card-icon" style="background:rgba(255,255,255,0.2)"><i class="fas fa-graduation-cap"></i></div>
+            <div class="card-icon" style="background:rgba(255,255,255,0.2);color:white"><i class="fas fa-graduation-cap"></i></div>
         </div>
         <div class="metric-grid">
             ${metricItemWhite('Total Consultores c/ vendas', consultoresOrdenados.length)}
@@ -1791,8 +1805,134 @@ function sortSectors(keys, order) {
 function getPercentClass(p){ p=typeof p==='number'?p:parseInt(p)||0; if(p>=90)return 'percent-high'; if(p>=80)return 'percent-medium'; return 'percent-low'; }
 function getSectorClass(s){ switch((s||'').toUpperCase()){case 'VENDAS':return 'sector-vendas';case 'RECEPCAO':return 'sector-recepcao';case 'REFILIACAO':return 'sector-refiliacao';case 'WEB SITE':case 'WEB':return 'sector-web';case 'TELEVENDAS':return 'sector-televendas';case 'RETENÇÃO':case 'RETENCAO':return 'sector-retencao';default:return 'sector-outros';} }
 function getSectorIcon(s){ switch((s||'').toUpperCase()){case 'VENDAS':return 'fas fa-shopping-cart';case 'RECEPCAO':return 'fas fa-headset';case 'REFILIACAO':return 'fas fa-user-plus';case 'WEB SITE':case 'WEB':return 'fas fa-globe';case 'TELEVENDAS':return 'fas fa-phone-alt';case 'RETENÇÃO':case 'RETENCAO':return 'fas fa-crown';default:return 'fas fa-users';} }
-function scalesXY(){ return {x:{grid:{display:false},border:{display:false}},y:{grid:{color:C.border},border:{display:false}}}; }
-function legendTop(){ return {position:'top',labels:{boxWidth:12,padding:14}}; }
+function scalesXY(){
+    return {
+        x:{ grid:{display:false}, border:{display:false}, ticks:{color:CH.text} },
+        y:{ grid:{color:CH.grid}, border:{display:false}, ticks:{color:CH.text, padding:6}, beginAtZero:true }
+    };
+}
+function legendTop(){ return {position:'top', align:'end', labels:{boxWidth:10, padding:14, usePointStyle:true}}; }
+
+// ============================================================================
+// NOVOS HELPERS V23 — Redesign visual SaaS Premium
+// ============================================================================
+
+// Paleta equilibrada para gráficos (menos saturada que a da marca)
+const CH = {
+    green:  '#10b981',
+    warn:   '#f59e0b',
+    danger: '#ef4444',
+    teal:   '#0d9488',
+    lime:   '#84cc16',
+    gray:   '#94a3b8',
+    grid:   '#eef2f6',
+    text:   '#64748b'
+};
+
+// Tooltips escuros modernos em TODOS os gráficos (defaults globais do Chart.js)
+(function aplicarTemaCharts(){
+    if (typeof Chart === 'undefined') return;
+    const t = Chart.defaults.plugins.tooltip;
+    t.backgroundColor = '#0f172a';
+    t.padding         = 10;
+    t.cornerRadius    = 8;
+    t.titleFont       = { weight: '700', size: 12 };
+    t.bodyFont        = { size: 12 };
+    t.boxPadding      = 4;
+    t.caretSize       = 5;
+    t.usePointStyle   = true;
+    Chart.defaults.plugins.legend.labels.usePointStyle = true;
+})();
+
+// Meta de aprovação da unidade (definida em aplicarUnidade → window.META_APROVACAO)
+function metaAprovacao(){
+    const m = Number(window.META_APROVACAO);
+    return Number.isFinite(m) && m > 0 ? m : 90;
+}
+
+// Tom da barra: verde ≥ meta · âmbar até 10 pts abaixo · vermelho abaixo disso
+function progressTone(p){
+    const m = metaAprovacao();
+    return p >= m ? 'ok' : p >= m - 10 ? 'warn' : 'bad';
+}
+
+/**
+ * Card de vendedor "pro":
+ *  - 3 indicadores no topo (2 informados + % atingido, colorido pelo tom)
+ *  - barra de progresso com marcador da meta
+ *  - detalhes secundários em chips compactos
+ *
+ * opts: { nome, badge(html), cardClass, borderColor, hero:[{label,value,color}],
+ *         pct, pctLabel, details:[{label,value,color}], extra(html) }
+ */
+function consultantCardPro(o){
+    const pct  = Math.max(0, Math.min(100, Math.round(Number(o.pct) || 0)));
+    const meta = metaAprovacao();
+    const tone = progressTone(pct);
+
+    const hero = (o.hero || []).map(h => `
+        <div class="cpro-stat">
+            <div class="cpro-stat-label">${h.label}</div>
+            <div class="cpro-stat-value"${h.color ? ` style="color:${h.color}"` : ''}>${h.value ?? 0}</div>
+        </div>`).join('');
+
+    const details = (o.details || []).map(d => `
+        <span class="cpro-chip">${d.label}<b${d.color ? ` style="color:${d.color}"` : ''}>${d.value ?? 0}</b></span>`).join('');
+
+    return `
+    <div class="consultant-card cpro ${o.cardClass || ''}"${o.borderColor ? ` style="border-left-color:${o.borderColor}"` : ''}>
+        <div class="consultant-header">
+            <div class="consultant-name">${o.nome || 'Sem nome'}</div>
+            ${o.badge || ''}
+        </div>
+        <div class="cpro-hero">
+            ${hero}
+            <div class="cpro-stat">
+                <div class="cpro-stat-label">${o.pctLabel || '% Atingido'}</div>
+                <div class="cpro-stat-value tone-${tone}">${pct}%</div>
+            </div>
+        </div>
+        <div class="cpro-progress" title="Meta da unidade: ${meta}%">
+            <div class="cpro-progress-head"><span>Meta ${meta}%</span><b class="cpro-progress-pct">${pct}%</b></div>
+            <div class="cpro-track">
+                <div class="cpro-fill tone-${tone}" style="width:${pct}%"></div>
+                <div class="cpro-meta-mark" style="left:${Math.min(100, meta)}%"></div>
+            </div>
+        </div>
+        ${details ? `<div class="cpro-details">${details}</div>` : ''}
+        ${o.extra || ''}
+    </div>`;
+}
+
+// Detalhes padrão dos cards de documentação (Cancelados, Base líquida, ...)
+function docDetails(c){
+    return [
+        { label: 'Cancelados',   value: c.cancelados || 0, color: '#b91c1c' },
+        { label: 'Base líquida', value: (c.total || 0) - (c.cancelados || 0) },
+        { label: 'Pendências',   value: c.pendencias || 0, color: 'var(--danger)' },
+        { label: 'Não enviado',  value: c.naoEnviado || 0, color: '#b45309' },
+        { label: 'Expirado',     value: c.expirado   || 0 }
+    ];
+}
+
+// Dataset de barras com cantos superiores arredondados
+function barDS(label, data, color){
+    return {
+        label, data, backgroundColor: color,
+        borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 },
+        borderSkipped: false,
+        maxBarThickness: 38
+    };
+}
+
+function tooltipDark(){
+    return { backgroundColor:'#0f172a', padding:10, cornerRadius:8, titleFont:{weight:'700',size:12}, bodyFont:{size:12}, boxPadding:4, usePointStyle:true };
+}
+
+function doughnutOpts(){
+    return { responsive:true, maintainAspectRatio:false, cutout:'72%',
+        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:10, padding:14, usePointStyle:true } }, tooltip: tooltipDark() } };
+}
 
 // ── Skeleton loading ──────────────────────────────────────────────────────
 function showSkeleton(){
