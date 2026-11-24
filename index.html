@@ -136,6 +136,12 @@
             <div class="sidebar-logo-label" id="sidebarUnidadeNome"></div>
         </div>
 
+        <!-- Seletor de unidade: só aparece quando o usuário tem 2+ unidades (js/auth.js) -->
+        <div class="sidebar-unidade-switch" id="unidadeSwitch" hidden>
+            <label for="unidadeSelect"><i class="fas fa-store"></i> Unidade</label>
+            <select id="unidadeSelect" aria-label="Trocar de unidade"></select>
+        </div>
+
         <nav class="sidebar-nav">
             <div class="sidebar-section-label">DASHBOARDS</div>
             <button class="sidebar-btn active" data-dashboard="resumo" data-tooltip="Resumo">
@@ -175,6 +181,15 @@
                 <span class="sidebar-btn-icon"><i class="fas fa-trophy"></i></span>
                 <span class="sidebar-btn-label">Campanha 14°</span>
             </button>
+
+            <!-- ADMINISTRAÇÃO: visível apenas para papel 'admin' na unidade ativa (js/auth.js) -->
+            <div class="sidebar-admin-section" id="sidebarAdminSection" hidden>
+                <div class="sidebar-section-label">ADMINISTRAÇÃO</div>
+                <button class="sidebar-btn" data-dashboard="equipe" data-tooltip="Equipe" hidden style="display:none;">
+                    <span class="sidebar-btn-icon"><i class="fas fa-users-cog"></i></span>
+                    <span class="sidebar-btn-label">Equipe</span>
+                </button>
+            </div>
         </nav>
 
         <div class="sidebar-footer">
@@ -257,6 +272,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <!-- Supabase Auth (versão fixa) -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-    <script src="app.js"></script>
+    <!-- Aplicação em ES Modules nativos (sem build): js/main.js importa os demais módulos -->
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
