@@ -2253,3 +2253,143 @@ body.auth-pending { overflow: hidden; }
     .main-wrapper { margin-left: 0; }
     .dashboard-content { padding: 20px; }
 }
+
+
+/* ============================================================================
+   ETAPA 4 — Multi-unidade · Equipe · Exportação por bloco  (apenas adições)
+   ============================================================================ */
+
+/* ── Seletor de unidade (sidebar) ──────────────────────────────────────────── */
+.sidebar-unidade-switch {
+    padding: 12px 14px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+}
+.sidebar-unidade-switch[hidden] { display: none; }
+.sidebar-unidade-switch label {
+    display: flex; align-items: center; gap: 6px;
+    margin-bottom: 6px;
+    font-size: 0.6rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+    color: rgba(255,255,255,0.34);
+    white-space: nowrap;
+}
+#unidadeSelect {
+    width: 100%;
+    padding: 8px 28px 8px 10px;
+    border-radius: 9px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background-color: rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.88);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.82rem; font-weight: 600;
+    cursor: pointer; outline: none;
+    appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1l4 4 4-4' fill='none' stroke='%23ffffff' stroke-opacity='.6' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    text-overflow: ellipsis;
+    transition: border-color .18s, background-color .18s;
+}
+#unidadeSelect:hover { background-color: rgba(255,255,255,0.1); }
+#unidadeSelect:focus { border-color: rgba(126,211,33,0.55); }
+#unidadeSelect option { color: #0f172a; background: #ffffff; }
+.sidebar.collapsed .sidebar-unidade-switch { display: none; }
+
+/* ── Seção administrativa da sidebar ───────────────────────────────────────── */
+.sidebar-admin-section {
+    display: flex; flex-direction: column; gap: 2px;
+    margin-top: 14px; padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+}
+.sidebar-admin-section[hidden] { display: none; }
+.sidebar-btn[hidden] { display: none; }
+
+/* ── Botão de câmera (exporta só aquele bloco) ─────────────────────────────── */
+.sector-header-right { display: flex; align-items: center; gap: 10px; }
+.btn-snap-setor {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    cursor: pointer;
+    opacity: 0.55;
+    transition: opacity .15s, background .15s, color .15s, border-color .15s;
+}
+.sector-card:hover .btn-snap-setor,
+.ranking-full:hover .btn-snap-setor,
+.btn-snap-setor:focus-visible { opacity: 1; }
+.btn-snap-setor:hover {
+    opacity: 1;
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    border-color: var(--primary);
+}
+.btn-snap-setor:disabled { cursor: progress; opacity: 1; }
+.ranking-full-header .btn-snap-setor { margin-left: 4px; }
+@media (hover: none) { .btn-snap-setor { opacity: 1; } }   /* touch: sempre visível */
+
+/* ── Equipe / Usuários ─────────────────────────────────────────────────────── */
+.team-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
+    gap: 22px;
+    align-items: start;
+}
+.team-card { margin-bottom: 0; }
+.team-muted { color: var(--text-muted); font-size: 0.82rem; }
+.team-you {
+    margin-left: 8px; padding: 2px 8px; border-radius: 20px;
+    background: var(--gray-light); color: var(--text-muted);
+    font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+}
+.team-badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+}
+.team-badge-admin  { background: var(--primary-light); color: var(--primary-dark); }
+.team-badge-leitor { background: var(--gray-light);   color: var(--text-muted); }
+.team-actions { text-align: right; white-space: nowrap; }
+.team-remove {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 10px; border-radius: 8px;
+    border: 1px solid #fecaca; background: #fff; color: #b91c1c;
+    font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.76rem; font-weight: 600;
+    cursor: pointer; transition: background .15s;
+}
+.team-remove:hover { background: #fef2f2; }
+.team-remove:disabled { opacity: .5; cursor: progress; }
+
+.team-field { margin-bottom: 14px; }
+.team-field label {
+    display: block; margin-bottom: 6px;
+    font-size: 0.74rem; font-weight: 700; color: var(--text);
+}
+.team-field input,
+.team-field select {
+    width: 100%; box-sizing: border-box;
+    padding: 10px 12px; border-radius: 10px;
+    border: 1.5px solid var(--border); background: #f8fafc;
+    font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.88rem; color: var(--text);
+    outline: none; transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.team-field input:focus,
+.team-field select:focus {
+    border-color: var(--primary); background: #fff;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+.team-msg {
+    display: none; margin-bottom: 14px; padding: 10px 12px; border-radius: 10px;
+    font-size: 0.82rem;
+}
+.team-msg.show { display: block; }
+.team-msg.error { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; }
+.team-msg.ok    { background: var(--primary-light); border: 1px solid var(--primary); color: var(--primary-dark); }
+.team-submit { width: 100%; height: 40px; }
+.team-submit:disabled { opacity: .7; cursor: progress; }
+
+@media (max-width: 900px) {
+    .team-layout { grid-template-columns: 1fr; }
+}
