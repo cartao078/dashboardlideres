@@ -2024,133 +2024,193 @@ select:focus {
 }
 
 /* ============================================================================
-   TELA DE LOGIN EXECUTIVA
-   Seletores com prefixo .auth-overlay (especificidade maior) para prevalecer
-   sobre o <style id="authStyles"> do index.html, sem precisar editá-lo.
+   TELA DE LOGIN SAAS PREMIUM (Substituir o bloco TELA DE LOGIN EXECUTIVA)
    ============================================================================ */
 body.auth-pending { overflow: hidden; }
 
 .auth-overlay {
-    background:
-        radial-gradient(900px 500px at 15% -10%, color-mix(in srgb, var(--primary) 22%, transparent) 0%, transparent 60%),
-        radial-gradient(700px 500px at 100% 110%, rgba(15,23,42,0.9) 0%, transparent 60%),
-        linear-gradient(160deg, #0b1912 0%, #0f172a 100%) !important;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background-color: #07110c;
+    background-image:
+        radial-gradient(circle at 20% 20%, rgba(0, 166, 81, 0.22) 0%, transparent 45%),
+        radial-gradient(circle at 85% 80%, rgba(126, 211, 33, 0.14) 0%, transparent 45%),
+        radial-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px) !important;
+    background-size: 100% 100%, 100% 100%, 24px 24px !important;
 }
 
 .auth-overlay .auth-card {
-    max-width: 420px;
-    background: #ffffff;
-    border-radius: 20px;
-    padding: 40px 36px 30px;
-    border: 1px solid rgba(255,255,255,0.6);
-    border-top: 4px solid var(--primary);
-    box-shadow: 0 30px 70px rgba(2, 6, 23, 0.5), 0 2px 6px rgba(2, 6, 23, 0.2);
+    width: 100%;
+    max-width: 410px;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 24px;
+    padding: 44px 38px 32px;
+    border: 1px solid rgba(255, 255, 255, 0.75);
+    box-shadow:
+        0 32px 64px -12px rgba(0, 0, 0, 0.65),
+        0 0 0 1px rgba(0, 166, 81, 0.15);
     position: relative;
-    animation: authIn 0.35s cubic-bezier(.2,.8,.2,1);
+    overflow: hidden;
+    animation: authFloatIn 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes authIn {
-    from { opacity: 0; transform: translateY(14px) scale(0.985); }
+/* Barra superior em gradiente da marca */
+.auth-overlay .auth-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
+}
+
+@keyframes authFloatIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
     to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .auth-overlay .auth-logo {
-    max-height: 52px;
-    max-width: 66%;
-    margin: 0 auto 22px;
+    max-height: 46px;
+    max-width: 62%;
+    margin: 0 auto 24px;
+    display: block;
     object-fit: contain;
 }
 
 .auth-overlay .auth-title {
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     font-weight: 800;
-    letter-spacing: -0.02em;
-    color: var(--text);
+    letter-spacing: -0.025em;
+    color: #0f172a;
+    text-align: center;
     margin: 0 0 6px;
 }
 
 .auth-overlay .auth-sub {
     font-size: 0.88rem;
-    color: var(--text-muted);
-    margin: 0 0 26px;
+    color: #64748b;
+    text-align: center;
+    line-height: 1.45;
+    margin: 0 0 28px;
 }
 
-.auth-overlay .auth-field { margin-bottom: 16px; }
+.auth-overlay .auth-field { margin-bottom: 18px; }
 
 .auth-overlay .auth-field label {
-    font-size: 0.72rem;
+    display: block;
+    font-size: 0.7rem;
     font-weight: 700;
-    color: var(--text-muted);
+    color: #475569;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.07em;
     margin-bottom: 7px;
 }
 
-.auth-overlay .auth-input-wrap i {
-    color: #94a3b8;
-    left: 14px;
-    transition: color 0.15s;
+.auth-overlay .auth-input-wrap {
+    position: relative;
 }
 
-.auth-overlay .auth-input-wrap:focus-within i { color: var(--primary); }
+.auth-overlay .auth-input-wrap i {
+    position: absolute;
+    top: 50%;
+    left: 15px;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 0.92rem;
+    transition: color 0.2s ease;
+    pointer-events: none;
+}
+
+.auth-overlay .auth-input-wrap:focus-within i {
+    color: var(--primary);
+}
 
 .auth-overlay .auth-input-wrap input {
-    height: 46px;
-    padding: 0 14px 0 40px;
-    border: 1px solid var(--border);
-    border-radius: 11px;
+    width: 100%;
+    height: 48px;
+    padding: 0 16px 0 42px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
     background: #f8fafc;
-    font-size: 0.93rem;
-    color: var(--text);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.94rem;
+    font-weight: 500;
+    color: #0f172a;
+    transition: all 0.2s ease;
 }
 
 .auth-overlay .auth-input-wrap input::placeholder { color: #94a3b8; }
 
-.auth-overlay .auth-input-wrap input:hover { border-color: #cbd5e1; }
+.auth-overlay .auth-input-wrap input:hover {
+    border-color: #cbd5e1;
+    background: #ffffff;
+}
 
 .auth-overlay .auth-input-wrap input:focus {
+    outline: none;
     border-color: var(--primary);
     background: #ffffff;
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 16%, transparent);
+    box-shadow: 0 0 0 4px rgba(0, 166, 81, 0.14);
 }
 
 .auth-overlay .auth-btn {
-    height: 48px;
-    margin-top: 10px;
-    padding: 0 16px;
-    border-radius: 11px;
-    background: var(--primary);
+    width: 100%;
+    height: 50px;
+    margin-top: 8px;
+    padding: 0 20px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     color: #ffffff;
-    font-size: 0.95rem;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.96rem;
     font-weight: 700;
     letter-spacing: 0.01em;
-    box-shadow: 0 6px 16px color-mix(in srgb, var(--primary) 32%, transparent);
-    transition: background 0.15s, box-shadow 0.15s, transform 0.05s;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: 0 10px 24px -6px rgba(0, 166, 81, 0.45);
+    transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .auth-overlay .auth-btn:hover:not(:disabled) {
-    filter: none;
-    background: var(--primary-dark);
-    box-shadow: 0 8px 22px color-mix(in srgb, var(--primary) 40%, transparent);
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px -6px rgba(0, 166, 81, 0.55);
+    filter: brightness(1.04);
 }
 
-.auth-overlay .auth-btn:disabled { opacity: 0.85; cursor: progress; }
+.auth-overlay .auth-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
 
-/* Feedback de carregamento no botão: troca o ícone por um spinner */
+.auth-overlay .auth-btn:disabled {
+    opacity: 0.85;
+    cursor: progress;
+}
+
 .auth-overlay .auth-btn:disabled i { display: none; }
 .auth-overlay .auth-btn:disabled::before {
     content: '';
-    width: 16px; height: 16px;
-    border: 2px solid rgba(255,255,255,0.4);
+    width: 17px; height: 17px;
+    border: 2.5px solid rgba(255, 255, 255, 0.35);
     border-top-color: #ffffff;
     border-radius: 50%;
     animation: spin 0.7s linear infinite;
 }
 
 .auth-overlay .auth-error {
+    display: none;
     margin: 0 0 16px;
-    padding: 11px 14px;
-    border-radius: 11px;
+    padding: 12px 14px;
+    border-radius: 12px;
     background: #fef2f2;
     border: 1px solid #fecaca;
     border-left: 4px solid #ef4444;
@@ -2172,21 +2232,25 @@ body.auth-pending { overflow: hidden; }
 }
 
 .auth-overlay .auth-foot {
-    margin: 22px 0 0;
+    margin: 26px 0 0;
     padding-top: 18px;
-    border-top: 1px solid var(--gray-light);
+    border-top: 1px solid #f1f5f9;
+    text-align: center;
     font-size: 0.75rem;
     color: #94a3b8;
+    font-weight: 500;
 }
 
 .auth-overlay .auth-checking {
-    padding: 36px 0 28px;
-    color: var(--text-muted);
+    padding: 40px 0 32px;
+    text-align: center;
+    color: #64748b;
     font-size: 0.9rem;
     font-weight: 600;
 }
 
 .auth-overlay .auth-checking .spinner { margin: 0 auto 14px; }
+
 
 /* ============================================================================
    RESPONSIVE
